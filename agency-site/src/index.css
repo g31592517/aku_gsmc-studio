@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #ffffff;
+  color: #0A1A0F;
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #f7faf8; }
+::-webkit-scrollbar-thumb { background: #d4e4da; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #008D4F; }
+
+/* ── Glassmorphism — light theme ── */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 141, 79, 0.12);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 141, 79, 0.14);
+}
+
+/*
+  ── Gradient text — FIXED for white background ──
+  Dark green → medium green. Fully visible on white.
+  NO shimmer animation on white bg (causes washout).
+*/
+.gradient-text {
+  background: linear-gradient(135deg, #005C33 0%, #008D4F 55%, #00A85E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-violet {
+  background: linear-gradient(135deg, #662D91 0%, #008D4F 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glow orb ── */
+.glow-orb {
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid #008D4F;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(0, 141, 79, 0.12);
+  color: #0A1A0F;
+}
+
+/* ── Section divider ── */
+.section-divider {
+  border-top: 1px solid #E8F0EC;
+}
+
+/* ── Hero atmosphere blobs — controlled, not scattered ── */
+.hero-blob-1 {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  top: -150px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(0, 141, 79, 0.07) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-blob-2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  bottom: -80px;
+  left: -80px;
+  background: radial-gradient(circle, rgba(102, 45, 145, 0.055) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-blob-3 {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(0, 141, 79, 0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── Section alternating bg ── */
+.bg-section-alt {
+  background: linear-gradient(180deg, #F7FAF8 0%, #ffffff 100%);
+}
