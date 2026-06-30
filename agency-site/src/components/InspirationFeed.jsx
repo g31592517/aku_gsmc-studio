@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Bookmark, Search, ExternalLink as ExternalLinkIcon, Play } from "lucide-react";
 import VideoLightboxModal from "./VideoLightboxModal";
-import { featuredVideoReel, getYoutubeThumbnailUrl, driveGalleryLink } from "../utils/videoData";
+import { featuredVideoReel, getYoutubeThumbnailUrl } from "../utils/videoData";
 import { useYoutubeMetadata } from "../hooks/useYoutubeMetadata";
 
 // A few videos from the featured reel, woven into the inspiration grid for variety
@@ -12,111 +12,139 @@ const inspirationVideoPicks = [
   { ...featuredVideoReel[5], cardHeight: "h-48" },
 ];
 
-// Real photography samples from the local portfolio archive
-const driveInspirationImages = [
-  {
-    id: "drive-001",
-    category: "Portrait Photography",
-    title: "Studio Portrait Collection",
-    description: "Selected stills from the AKU GSMC photography archive.",
-    imageUrl: "https://images.unsplash.com/photo-1554080353-a576cf803bda?w=600&q=80",
-    cardHeight: "h-60",
-  },
-  {
-    id: "drive-002",
-    category: "Event Coverage",
-    title: "Campus Event Highlights",
-    description: "Selected stills from the AKU GSMC photography archive.",
-    imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=600&q=80",
-    cardHeight: "h-52",
-  },
-];
-
 const inspirationCategories = [
   "All",
-  "Wedding Videos",
-  "Commercial Shoots",
-  "Music Videos",
-  "Podcasts",
-  "Product Photography",
-  "Portrait Photography",
-  "Social Media",
-  "Event Coverage",
+  "Flyer & Poster Design",
+  "Print & Publication Design",
+  "Merchandise & Mockup Design",
+  "Animated Explainer Videos",
+  "Podcast Production (Video & Audio)",
+  "Professional Videography & Photography",
 ];
 
-// Real photography samples from the local portfolio archive
 const inspirationGalleryItems = [
+  // Flyer & Poster Design
   {
     id: "insp-001",
-    category: "Wedding Videos",
-    title: "Golden Hour Ceremony Film",
-    description: "Cinematic documentation of an intimate outdoor ceremony.",
-    imageUrl: "/Photos/395A0409.jpg",
+    category: "Flyer & Poster Design",
+    title: "Event Flyer Design",
+    description: "Bold and engaging flyer layouts for campus and community events.",
+    imageUrl: "/Assets/flyer1.jpeg",
     cardHeight: "h-72",
   },
   {
     id: "insp-002",
-    category: "Portrait Photography",
-    title: "Urban Portrait Series",
-    description: "Natural light editorial portraits against city architecture.",
-    imageUrl: "/Photos/395A3106.jpg",
-    cardHeight: "h-48",
-  },
-  {
-    id: "insp-003",
-    category: "Music Videos",
-    title: "Neon Nights Visual",
-    description: "Atmospheric music video with controlled practical lighting.",
-    imageUrl: "/Photos/IMG_7048.jpg",
-    cardHeight: "h-64",
-  },
-  {
-    id: "insp-004",
-    category: "Commercial Shoots",
-    title: "Brand Identity Film",
-    description: "Corporate documentary showcasing company culture and values.",
-    imageUrl: "/Photos/IMG_7185.jpg",
+    category: "Flyer & Poster Design",
+    title: "Poster Series",
+    description: "Professional poster compositions for brand and event promotion.",
+    imageUrl: "/Assets/poster1.jpeg",
     cardHeight: "h-56",
   },
   {
+    id: "insp-003",
+    category: "Flyer & Poster Design",
+    title: "Creative Poster Layouts",
+    description: "Visually compelling poster designs with strong typographic hierarchy.",
+    imageUrl: "/Assets/poster3.jpg",
+    cardHeight: "h-64",
+  },
+
+  // Print & Publication Design
+  {
+    id: "insp-004",
+    category: "Print & Publication Design",
+    title: "Print Layout Portfolio",
+    description: "Professional print-ready layouts for brochures and collateral.",
+    imageUrl: "/Assets/Print1.png",
+    cardHeight: "h-60",
+  },
+  {
     id: "insp-005",
-    category: "Product Photography",
-    title: "Campaign",
-    description: "Macro product photography with crafted studio lighting.",
-    imageUrl: "/Photos/IMG_8230.jpg",
+    category: "Print & Publication Design",
+    title: "Publication Spread Design",
+    description: "Editorial spreads designed for readability and visual impact.",
+    imageUrl: "/Assets/publication1.png",
     cardHeight: "h-80",
   },
   {
     id: "insp-006",
-    category: "Event Coverage",
-    title: "Conference Documentation",
-    description: "Multi-camera event coverage for a technology summit.",
-    imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80",
+    category: "Print & Publication Design",
+    title: "Magazine & Report Layouts",
+    description: "Clean, structured layouts for magazines, reports, and newsletters.",
+    imageUrl: "/Assets/Print2.png",
     cardHeight: "h-52",
   },
+
+  // Merchandise & Mockup Design
   {
     id: "insp-007",
-    category: "Podcasts",
-    title: "Studio Recording Session",
-    description: "Professional podcast production in a treated recording space.",
-    imageUrl: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=600&q=80",
-    cardHeight: "h-60",
+    category: "Merchandise & Mockup Design",
+    title: "Merchandise Mockup Collection",
+    description: "Branded merchandise concepts with realistic product mockups.",
+    imageUrl: "/Assets/Merch1.png",
+    cardHeight: "h-64",
   },
   {
     id: "insp-008",
-    category: "Social Media",
-    title: "Social Content Package",
-    description: "Vertical-format creative content optimised for engagement.",
-    imageUrl: "/Photos/395A9089.jpg",
-    cardHeight: "h-44",
+    category: "Merchandise & Mockup Design",
+    title: "Apparel Branding Concepts",
+    description: "Custom apparel and merchandise designs for brand identity.",
+    imageUrl: "/Assets/Merch3.png",
+    cardHeight: "h-48",
   },
   {
     id: "insp-009",
-    category: "Wedding Videos",
-    title: "Destination Wedding Film",
-    description: "Feature-length documentary wedding film across two days.",
-    imageUrl: "/Photos/395A9808.jpg",
+    category: "Merchandise & Mockup Design",
+    title: "Product Mockup Showcase",
+    description: "Detailed product mockups for packaging and promotional items.",
+    imageUrl: "/Assets/Merch5.png",
     cardHeight: "h-68",
+  },
+
+  // Animated Explainer Videos
+  {
+    id: "insp-010",
+    category: "Animated Explainer Videos",
+    title: "Motion Explainer Frames",
+    description: "Key visual frames from animated explainer video productions.",
+    imageUrl: "/Assets/Animated1.png",
+    cardHeight: "h-56",
+  },
+  {
+    id: "insp-011",
+    category: "Animated Explainer Videos",
+    title: "Animation Styleframes",
+    description: "Concept art and styleframes for short-form animated content.",
+    imageUrl: "/Assets/Animated3.png",
+    cardHeight: "h-44",
+  },
+
+  // Podcast Production (Video & Audio)
+  {
+    id: "insp-012",
+    category: "Podcast Production (Video & Audio)",
+    title: "Podcast Studio Setup",
+    description: "Professional podcast recording and production environment.",
+    imageUrl: "/Assets/aduio1.jpeg",
+    cardHeight: "h-60",
+  },
+
+  // Professional Videography & Photography
+  {
+    id: "insp-013",
+    category: "Professional Videography & Photography",
+    title: "Video Production Stills",
+    description: "Behind-the-scenes and key frames from video production projects.",
+    imageUrl: "/Assets/video1.jpeg",
+    cardHeight: "h-52",
+  },
+  {
+    id: "insp-014",
+    category: "Professional Videography & Photography",
+    title: "Cinematic Photography",
+    description: "Professional photography work for events and brand storytelling.",
+    imageUrl: "/Assets/video2.jpeg",
+    cardHeight: "h-72",
   },
 ];
 
@@ -139,10 +167,25 @@ function InspirationCard({ item, isLiked, isSaved, onToggleLike, onToggleSave })
         draggable={false}
       />
 
-      {/* Permanent bottom gradient for legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+      {/* Gradient overlay for legibility */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" />
 
-      {/* Hover overlay */}
+      {/* Category chip — always visible like YouTube cards */}
+      <div
+        className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold text-white bg-aku-primary/90 backdrop-blur-sm group-hover:opacity-0 transition-opacity pointer-events-none"
+        aria-hidden="true"
+      >
+        {item.category}
+      </div>
+
+      {/* Title — always visible at bottom, green text like YouTube style */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+        <h3 className="text-aku-greenLight font-semibold font-display text-sm leading-snug">
+          {item.title}
+        </h3>
+      </div>
+
+      {/* Hover overlay — description, actions */}
       <div className="absolute inset-0 bg-surface-base/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-4">
         {/* Action buttons */}
         <div className="flex justify-end gap-2">
@@ -177,9 +220,6 @@ function InspirationCard({ item, isLiked, isSaved, onToggleLike, onToggleSave })
           <span className="text-xs font-semibold text-aku-greenLight uppercase tracking-wider">
             {item.category}
           </span>
-          <h3 className="text-white font-semibold font-display mt-1 text-sm leading-tight">
-            {item.title}
-          </h3>
           <p className="text-white/60 text-xs mt-1 leading-relaxed line-clamp-2">
             {item.description}
           </p>
@@ -188,14 +228,6 @@ function InspirationCard({ item, isLiked, isSaved, onToggleLike, onToggleSave })
             View Details
           </button>
         </div>
-      </div>
-
-      {/* Always-visible category chip */}
-      <div
-        className="absolute top-3 left-3 px-2.5 py-1 glass rounded-full text-xs font-medium text-white/85 group-hover:opacity-0 transition-opacity pointer-events-none"
-        aria-hidden="true"
-      >
-        {item.category}
       </div>
     </motion.article>
   );
@@ -251,7 +283,7 @@ export default function InspirationFeed() {
 
   const allGalleryItems = [
     ...inspirationGalleryItems,
-    ...driveInspirationImages,
+
     ...inspirationVideoPicks,
   ];
 
@@ -373,19 +405,10 @@ export default function InspirationFeed() {
           </div>
         )}
 
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="mt-12 text-center">
           <button className="bg-white border border-surface-border text-text-primary font-medium px-9 py-3.5 rounded-full hover:border-aku-green/40 hover:bg-surface-subtle transition-all duration-300">
             Load More Inspiration
           </button>
-          <a
-            href={driveGalleryLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-aku-green font-medium text-sm hover:text-aku-greenDark transition-colors px-4 py-3.5"
-          >
-            View Full Photo Archive
-            <ExternalLinkIcon size={14} aria-hidden="true" />
-          </a>
         </div>
 
         <VideoLightboxModal

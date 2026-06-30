@@ -5,7 +5,7 @@ import InspirationFeed from "./components/InspirationFeed";
 import Services from "./components/Services";
 import FeaturedWorkReel from "./components/FeaturedWorkReel";
 import ProjectSubmissionWizard from "./components/ProjectBrief";
-import PortfolioShowcaseSection from "./components/Portfolio";
+// import PortfolioShowcaseSection from "./components/Portfolio";
 import CompetitiveAdvantagesSection from "./components/WhyUs";
 import ClientTestimonialsSection from "./components/Testimonials";
 import ConversionCallToAction from "./components/CTA";
@@ -21,7 +21,7 @@ export default function App() {
         <Services />
         <FeaturedWorkReel />
         <ProjectSubmissionWizard />
-        <PortfolioShowcaseSection />
+        {/* <PortfolioShowcaseSection /> */}
         <CompetitiveAdvantagesSection />
         <ClientTestimonialsSection />
         <ConversionCallToAction />

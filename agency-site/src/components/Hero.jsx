@@ -99,7 +99,7 @@ export default function Hero() {
         aria-hidden="true"
       />
 
-      {/* Floating service pills — desktop only */}
+      {/* Floating service pills — desktop only (commented out for now)
       {floatingServiceIndicators.map(({ icon: Icon, label, position, animationDelay, bgColor }) => (
         <motion.div
           key={label}
@@ -123,7 +123,8 @@ export default function Hero() {
             {label}
           </span>
         </motion.div>
-      ))}
+      )}
+      */}
 
       {/* ── Main content ── */}
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
@@ -188,14 +189,19 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.38 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16"
         >
-          {/* Primary CTA */}
-          <button
-            className="group relative flex items-center gap-2 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 text-sm overflow-hidden"
+          {/* Primary CTA — scrolls to project submission */}
+          <a
+            href="#contact"
+            onClick={(e) => {
+              e.preventDefault();
+              document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="group relative flex items-center gap-2 text-white font-semibold px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 text-sm overflow-hidden cursor-pointer"
             style={{
               background: "linear-gradient(135deg, #008D4F 0%, #006B3C 100%)",
               boxShadow: "0 4px 20px rgba(0,141,79,0.35), 0 1px 3px rgba(0,141,79,0.2)",
             }}
-            aria-label="Start your creative project"
+            aria-label="Submit your creative project"
           >
             {/* Shine sweep on hover */}
             <span
@@ -212,11 +218,16 @@ export default function Hero() {
               className="relative group-hover:translate-x-0.5 transition-transform"
               aria-hidden="true"
             />
-          </button>
+          </a>
 
-          {/* Secondary CTA */}
-          <button
-            className="group flex items-center gap-2.5 bg-white font-medium px-7 py-3.5 rounded-full transition-all duration-300 text-sm"
+          {/* Secondary CTA — scrolls to What We Create */}
+          <a
+            href="#services"
+            onClick={(e) => {
+              e.preventDefault();
+              document.querySelector("#services")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="group flex items-center gap-2.5 bg-white font-medium px-7 py-3.5 rounded-full transition-all duration-300 text-sm cursor-pointer"
             style={{
               border: "1.5px solid #008D4F",
               color: "#008D4F",
@@ -230,7 +241,7 @@ export default function Hero() {
               e.currentTarget.style.background = "#ffffff";
               e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,141,79,0.10)";
             }}
-            aria-label="Explore inspiration gallery"
+            aria-label="Explore What We Create"
           >
             <PlayCircle
               size={18}
@@ -238,7 +249,7 @@ export default function Hero() {
               style={{ color: "#008D4F" }}
             />
             Explore Inspiration
-          </button>
+          </a>
         </motion.div>
 
         {/*

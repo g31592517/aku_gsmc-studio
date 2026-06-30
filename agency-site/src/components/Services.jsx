@@ -94,17 +94,17 @@ function ServiceCard({ service, index }) {
     >
       {/* Icon */}
       <div
-        className="w-12 h-12 rounded-2xl bg-aku-primary flex items-center justify-center mb-5 shadow-glow-green-sm group-hover:scale-110 transition-transform duration-300"
+        className="w-12 h-12 rounded-2xl bg-aku-primary flex items-center justify-center mb-5 shadow-glow-green-sm group-hover:scale-110 transition-transform duration-300 mx-auto md:mx-0"
         aria-hidden="true"
       >
         <Icon size={20} className="text-white" />
       </div>
 
-      <h3 className="font-display font-bold text-lg text-text-primary mb-2 leading-snug">
+      <h3 className="font-display font-bold text-lg text-text-primary mb-2 leading-snug text-center md:text-left">
         {service.title}
       </h3>
 
-      <p className="text-text-muted text-sm leading-relaxed mb-6 flex-1">
+      <p className="text-text-muted text-sm leading-relaxed mb-6 flex-1 text-center md:text-left">
         {service.description}
       </p>
 
@@ -134,7 +134,7 @@ function ServiceCategorySection({ category, isLast }) {
         transition={{ duration: 0.6 }}
         className="mb-10"
       >
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
           <span
             className={`h-1.5 w-10 rounded-full bg-gradient-to-r ${category.accentGradient}`}
             aria-hidden="true"
@@ -143,10 +143,10 @@ function ServiceCategorySection({ category, isLast }) {
             Category
           </span>
         </div>
-        <h3 className="font-display font-extrabold text-2xl md:text-3xl text-text-primary mb-2">
+        <h3 className="font-display font-extrabold text-2xl md:text-3xl text-text-primary mb-2 text-center md:text-left">
           {category.title}
         </h3>
-        <p className="text-text-muted text-base max-w-2xl">
+        <p className="text-text-muted text-base max-w-2xl text-center md:text-left mx-auto md:mx-0">
           {category.description}
         </p>
       </motion.div>
