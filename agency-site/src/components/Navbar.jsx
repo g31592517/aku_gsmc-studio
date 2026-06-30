@@ -12,11 +12,22 @@ const navigationLinks = [
 ];
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [hideNav, setHideNav] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setHideNav(true);
+      } else {
+        setHideNav(false);
+      }
+      lastScrollY = currentScrollY;
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -29,14 +40,10 @@ export default function Navbar() {
   return (
     <>
       <motion.header
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? "bg-white/95 backdrop-blur-md shadow-nav border-b border-surface-border py-2.5"
-            : "bg-white py-3.5 border-b border-surface-border"
-        }`}
+        initial={{ y: 0, opacity: 1 }}
+        animate={{ y: hideNav ? -130 : 0 }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
+        className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-nav border-b border-surface-border py-2.5"
         role="banner"
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
