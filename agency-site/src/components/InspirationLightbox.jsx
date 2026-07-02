@@ -116,9 +116,6 @@ export default function InspirationLightbox({ item, onClose }) {
 
             {/* Right panel — project details */}
             <div className="lg:w-2/5 w-full flex flex-col justify-center p-8 overflow-y-auto">
-              <span className="text-aku-greenLight text-xs font-semibold tracking-widest uppercase mb-3">
-                {item.category}
-              </span>
               <h2 className="font-display font-extrabold text-2xl text-text-primary mb-3 leading-snug">
                 {item.title}
               </h2>

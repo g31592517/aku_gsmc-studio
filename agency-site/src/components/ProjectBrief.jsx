@@ -146,7 +146,8 @@ export default function ProjectSubmissionWizard() {
             Share Your Project Brief
           </h2>
           <p className="text-text-secondary text-lg">
-            Tell us your vision. We'll make it real.
+            Tell us what you have in mind.
+            Upload any inspiration behind the idea. We'll deliver the best outcome
           </p>
         </motion.div>
 
@@ -176,8 +177,7 @@ export default function ProjectSubmissionWizard() {
                 Brief Received
               </h3>
               <p className="text-text-secondary max-w-sm">
-                We'll review your project and reach out within 24 hours. Get
-                ready to create something exceptional.
+                We'll review your project and reach out within 24 hours. 
               </p>
               <button
                 onClick={resetWizard}
@@ -245,11 +245,9 @@ export default function ProjectSubmissionWizard() {
                     transition={{ duration: 0.3 }}
                   >
                     <h3 className="font-display font-bold text-2xl text-text-primary mb-2">
-                      What are you creating?
+                      Choose a service that you want
                     </h3>
-                    <p className="text-text-muted text-sm mb-6">
-                      Choose a service to get started.
-                    </p>
+                    
                     <div
                       className="grid grid-cols-3 gap-4"
                       role="radiogroup"
