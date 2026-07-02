@@ -134,15 +134,6 @@ function ServiceCategorySection({ category, isLast }) {
         transition={{ duration: 0.6 }}
         className="mb-10"
       >
-        <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
-          <span
-            className={`h-1.5 w-10 rounded-full bg-gradient-to-r ${category.accentGradient}`}
-            aria-hidden="true"
-          />
-          <span className="text-aku-greenLight text-sm font-semibold tracking-widest uppercase">
-            Category
-          </span>
-        </div>
         <h3 className="font-display font-extrabold text-2xl md:text-3xl text-text-primary mb-2 text-center md:text-left">
           {category.title}
         </h3>

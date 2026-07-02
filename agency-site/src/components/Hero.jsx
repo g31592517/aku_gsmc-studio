@@ -129,21 +129,6 @@ export default function Hero() {
       {/* ── Main content ── */}
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
 
-        {/* Status badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2.5 bg-white border border-surface-border rounded-full px-4 py-2 mb-10 shadow-sm"
-        >
-          <span
-            className="w-2 h-2 rounded-full bg-aku-green animate-pulse"
-            aria-hidden="true"
-          />
-          <span className="text-sm font-medium text-text-secondary">
-            Submit your ideas anytime 
-          </span>
-        </motion.div>
 
         {/*
           ── Headline ──
@@ -156,7 +141,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-          className="font-display font-extrabold leading-[1.08] tracking-tight text-text-primary mb-6"
+          className="font-display font-extrabold leading-[1.08] tracking-tight text-text-primary mb-6 mt-10"
           style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)" }}
         >
           Turn Your Ideas Into{" "}

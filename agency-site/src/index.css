@@ -123,3 +123,24 @@ body {
 .bg-section-alt {
   background: linear-gradient(180deg, #F7FAF8 0%, #ffffff 100%);
 }
+
+/*
+  Prevents the GPU compositing layer from blurring images during scroll.
+  This was the root cause of images appearing soft or translucent while scrolling.
+  Do not add backdrop-filter to any element that wraps or overlaps images in the gallery.
+*/
+[role="button"] img {
+  will-change: transform;
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/*
+  Visible keyboard focus ring for gallery cards.
+  Required for accessibility — do not remove.
+*/
+[role="button"]:focus-visible {
+  outline: 2px solid #008D4F;
+  outline-offset: 3px;
+  border-radius: 12px;
+}

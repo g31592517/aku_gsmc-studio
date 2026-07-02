@@ -7,7 +7,7 @@ import FeaturedWorkReel from "./components/FeaturedWorkReel";
 import ProjectSubmissionWizard from "./components/ProjectBrief";
 // import PortfolioShowcaseSection from "./components/Portfolio";
 import CompetitiveAdvantagesSection from "./components/WhyUs";
-import ClientTestimonialsSection from "./components/Testimonials";
+// import ClientTestimonialsSection from "./components/Testimonials";
 import ConversionCallToAction from "./components/CTA";
 import SiteFooter from "./components/Footer";
 
@@ -23,7 +23,7 @@ export default function App() {
         <ProjectSubmissionWizard />
         {/* <PortfolioShowcaseSection /> */}
         <CompetitiveAdvantagesSection />
-        <ClientTestimonialsSection />
+        {/* <ClientTestimonialsSection /> */}
         <ConversionCallToAction />
       </main>
       <SiteFooter />

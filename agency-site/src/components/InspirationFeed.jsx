@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Heart, Bookmark, Search, ExternalLink as ExternalLinkIcon, Play } from "lucide-react";
+import { Search, Play } from "lucide-react";
 import VideoLightboxModal from "./VideoLightboxModal";
+import InspirationImageCard from "./InspirationImageCard";
+import InspirationLightbox from "./InspirationLightbox";
 import { featuredVideoReel, getYoutubeThumbnailUrl } from "../utils/videoData";
 import { useYoutubeMetadata } from "../hooks/useYoutubeMetadata";
 
@@ -28,7 +30,7 @@ const inspirationGalleryItems = [
     id: "insp-001",
     category: "Flyer & Poster Design",
     title: "Event Flyer Design",
-    description: "Bold and engaging flyer layouts for campus and community events.",
+    //description: "Bold and engaging flyer layouts for campus and community events.",
     imageUrl: "/Assets/flyer1.jpeg",
     cardHeight: "h-72",
   },
@@ -36,7 +38,7 @@ const inspirationGalleryItems = [
     id: "insp-002",
     category: "Flyer & Poster Design",
     title: "Poster Series",
-    description: "Professional poster compositions for brand and event promotion.",
+    //description: "Professional poster compositions for brand and event promotion.",
     imageUrl: "/Assets/poster1.jpeg",
     cardHeight: "h-56",
   },
@@ -148,91 +150,6 @@ const inspirationGalleryItems = [
   },
 ];
 
-function InspirationCard({ item, isLiked, isSaved, onToggleLike, onToggleSave }) {
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.45 }}
-      className={`break-inside-avoid relative ${item.cardHeight} rounded-2xl overflow-hidden group cursor-pointer mb-4`}
-      aria-label={item.title}
-    >
-      {/* Real image */}
-      <img
-        src={item.imageUrl}
-        alt={item.title}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        loading="lazy"
-        draggable={false}
-      />
-
-      {/* Gradient overlay for legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20 pointer-events-none" />
-
-      {/* Category chip — always visible like YouTube cards */}
-      <div
-        className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold text-white bg-aku-primary/90 backdrop-blur-sm group-hover:opacity-0 transition-opacity pointer-events-none"
-        aria-hidden="true"
-      >
-        {item.category}
-      </div>
-
-      {/* Title — always visible at bottom, green text like YouTube style */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
-        <h3 className="text-aku-greenLight font-semibold font-display text-sm leading-snug">
-          {item.title}
-        </h3>
-      </div>
-
-      {/* Hover overlay — description, actions */}
-      <div className="absolute inset-0 bg-surface-base/70 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-4">
-        {/* Action buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleLike(); }}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-              isLiked
-                ? "bg-red-500 text-white"
-                : "bg-surface-overlay/80 text-text-primary hover:bg-red-500/60"
-            }`}
-            aria-label={isLiked ? `Unlike ${item.title}` : `Like ${item.title}`}
-            aria-pressed={isLiked}
-          >
-            <Heart size={13} className={isLiked ? "fill-white" : ""} aria-hidden="true" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleSave(); }}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-              isSaved
-                ? "bg-aku-green text-white"
-                : "bg-surface-overlay/80 text-text-primary hover:bg-aku-green/60"
-            }`}
-            aria-label={isSaved ? `Unsave ${item.title}` : `Save ${item.title}`}
-            aria-pressed={isSaved}
-          >
-            <Bookmark size={13} className={isSaved ? "fill-white" : ""} aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Item info */}
-        <div>
-          <span className="text-xs font-semibold text-aku-greenLight uppercase tracking-wider">
-            {item.category}
-          </span>
-          <p className="text-white/60 text-xs mt-1 leading-relaxed line-clamp-2">
-            {item.description}
-          </p>
-          <button className="mt-2.5 flex items-center gap-1.5 text-xs text-aku-greenLight hover:text-white transition-colors font-medium">
-            <ExternalLinkIcon size={11} aria-hidden="true" />
-            View Details
-          </button>
-        </div>
-      </div>
-    </motion.article>
-  );
-}
-
 function InspirationVideoCard({ video, onPlay }) {
   const { title } = useYoutubeMetadata(video.youtubeId);
 
@@ -277,9 +194,11 @@ function InspirationVideoCard({ video, onPlay }) {
 export default function InspirationFeed() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [likedItems, setLikedItems] = useState({});
-  const [savedItems, setSavedItems] = useState({});
   const [activeVideo, setActiveVideo] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const handleOpenLightbox = useCallback((item) => setSelectedImage(item), []);
+  const handleCloseLightbox = useCallback(() => setSelectedImage(null), []);
 
   const allGalleryItems = [
     ...inspirationGalleryItems,
@@ -295,11 +214,6 @@ export default function InspirationFeed() {
       item.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
-
-  const toggleLike = (id) =>
-    setLikedItems((prev) => ({ ...prev, [id]: !prev[id] }));
-  const toggleSave = (id) =>
-    setSavedItems((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <section id="inspiration" className="py-24 px-6 bg-white section-divider" aria-labelledby="inspiration-heading">
@@ -319,9 +233,9 @@ export default function InspirationFeed() {
             id="inspiration-heading"
             className="font-display font-extrabold text-4xl md:text-5xl text-text-primary mt-2 mb-4"
           >
-            See our creative Ideas
+            See Our Creative Ideas
           </h2>
-          <p className="text-text-secondary text-lg max-w-xl">
+          <p className="text-text-muted text-lg max-w-xl">
             Discover work that inspires. Save ideas and share them when you
             start your project brief.
           </p>
@@ -382,13 +296,10 @@ export default function InspirationFeed() {
                   onPlay={(youtubeId, title) => setActiveVideo({ youtubeId, title })}
                 />
               ) : (
-                <InspirationCard
+                <InspirationImageCard
                   key={item.id}
                   item={item}
-                  isLiked={!!likedItems[item.id]}
-                  isSaved={!!savedItems[item.id]}
-                  onToggleLike={() => toggleLike(item.id)}
-                  onToggleSave={() => toggleSave(item.id)}
+                  onOpenLightbox={handleOpenLightbox}
                 />
               )
             )}
@@ -416,6 +327,8 @@ export default function InspirationFeed() {
           title={activeVideo?.title}
           onClose={() => setActiveVideo(null)}
         />
+
+        <InspirationLightbox item={selectedImage} onClose={handleCloseLightbox} />
       </div>
     </section>
   );
