@@ -108,8 +108,13 @@ function ServiceCard({ service, index }) {
         {service.description}
       </p>
 
-      <button
-        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm border border-aku-green/30 text-aku-green bg-surface-subtle hover:bg-aku-primary hover:text-white hover:border-transparent transition-all duration-300 group/cta"
+      <a
+        href="#contact"
+        onClick={(e) => {
+          e.preventDefault();
+          document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" });
+        }}
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm border border-aku-green/30 text-aku-green bg-surface-subtle hover:bg-aku-primary hover:text-white hover:border-transparent transition-all duration-300 group/cta cursor-pointer"
         aria-label={`${service.ctaLabel}: ${service.title}`}
       >
         {service.ctaLabel}
@@ -118,7 +123,7 @@ function ServiceCard({ service, index }) {
           className="group-hover/cta:translate-x-1 transition-transform"
           aria-hidden="true"
         />
-      </button>
+      </a>
     </motion.article>
   );
 }

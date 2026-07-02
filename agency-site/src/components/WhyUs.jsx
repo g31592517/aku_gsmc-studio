@@ -3,43 +3,47 @@ import { motion } from "framer-motion";
 import { Zap, Palette, Users, DollarSign, MessageSquare, Trophy } from "lucide-react";
 
 const competitiveAdvantages = [
-  {
-    icon: Zap,
-    title: "Quick delivery",
-    description: "Rapid production without compromising quality. Most projects delivered within 7–14 days.",
-    iconGradient: "from-amber-500 to-aku-green",
-  },
+ {
+  icon: Zap,
+  title: "Quick Delivery",
+  description: "We deliver your projects on time without compromising on quality.",
+  iconGradient: "from-amber-500 to-aku-green",
+},
 
-  {
-    icon: Palette,
-    title: "Creative Excellence",
-    description: "Graphic desiners  who push boundaries and consistently exceed expectations.",
-    iconGradient: "from-aku-green to-aku-greenLight",
-  },
-  {
-    icon: Users,
-    title: "Professional Team",
-    description: "Pro graphic gurus....Paul, Regii..Seasoned specialists with great experience across every design and edits..",
-    iconGradient: "from-aku-violet to-aku-green",
-  },
-  {
-    icon: DollarSign,
-    title: "Transparent Pricing",
-    description: "No hidden fees. Clear upfront quotes. You pay only for what your project needs.",
-    iconGradient: "from-aku-green to-aku-greenLight",
-  },
-  {
-    icon: MessageSquare,
-    title: "Unlimited Revisions",
-    description: "We iterate until you're fully satisfied. Kwani si hudoo?.",
-    iconGradient: "from-aku-amber to-aku-green",
-  },
-  {
-    icon: Trophy,
-    title: "Premium Quality Output",
-    description: "Broadcast-ready deliverables engineered to stand out on every screen and platform.",
-    iconGradient: "from-aku-violet to-aku-green",
-  },
+{
+  icon: Palette,
+  title: "Creative Excellence",
+  description: "Fresh ideas, thoughtful designs and attention to detail in every project.",
+  iconGradient: "from-aku-green to-aku-greenLight",
+},
+
+{
+  icon: Users,
+  title: "Professional Team",
+  description: "Work with a skilled team of designers, editors, photographers and videographers who are passionate about what they do.",
+  iconGradient: "from-aku-violet to-aku-green",
+},
+
+{
+  icon: DollarSign,
+  title: "Transparent Pricing",
+  description: "Clear pricing , no hidden costs or unexpected charges.",
+  iconGradient: "from-aku-green to-aku-greenLight",
+},
+
+{
+  icon: MessageSquare,
+  title: "Collaborative Process",
+  description: "Your feedback matters. We work with you throughout the process to make sure the final result meets your expectations.",
+  iconGradient: "from-aku-amber to-aku-green",
+},
+
+{
+  icon: Trophy,
+  title: "High-Quality Results",
+  description: "Every project is carefully crafted to deliver a polished and professional final product.",
+  iconGradient: "from-aku-violet to-aku-green",
+},
 ];
 
 export default function CompetitiveAdvantagesSection() {
