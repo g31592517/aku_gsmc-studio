@@ -44,3 +44,13 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
 
 CREATE INDEX IF NOT EXISTS idx_briefs_status ON project_briefs(status);
 CREATE INDEX IF NOT EXISTS idx_inspiration_category ON inspiration_items(category);
+
+-- User sign-in / contact registry
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(150) UNIQUE NOT NULL,
+  contact_number VARCHAR(30) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

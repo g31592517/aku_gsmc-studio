@@ -1,4 +1,8 @@
 const pool = require("../config/database");
+const {
+  sendServiceRequestEmail,
+  sendRequesterConfirmationEmail,
+} = require("../services/emailService");
 
 async function createProjectBrief(req, res, next) {
   const client = await pool.connect();
@@ -52,6 +56,25 @@ async function createProjectBrief(req, res, next) {
     }
 
     await client.query("COMMIT");
+
+    // Send emails after the transaction commits successfully.
+    const attachmentFilenames = (req.files || []).map((f) => f.originalname);
+
+    sendServiceRequestEmail({
+      requesterEmail: clientEmail,
+      contactNumber: req.body.contactNumber || "Not provided",
+      selectedService: serviceType,
+      projectDescription: projectVision,
+      budgetRange: budgetRange,
+      projectDeadline: projectDeadline,
+      attachmentFilenames,
+      submittedAt: new Date(),
+    }).catch((err) => console.error("Failed to send internal request email:", err));
+
+    sendRequesterConfirmationEmail({
+      requesterEmail: clientEmail,
+      selectedService: serviceType,
+    }).catch((err) => console.error("Failed to send confirmation email:", err));
 
     res.status(201).json({
       success: true,

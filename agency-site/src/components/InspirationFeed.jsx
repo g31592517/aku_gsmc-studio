@@ -20,7 +20,7 @@ const inspirationCategories = [
   "Print & Publication Design",
   "Merchandise & Mockup Design",
   "Animated Explainer Videos",
-  "Podcast Production (Video & Audio)",
+  "Podcast Production ",
   "Professional Videography & Photography",
 ];
 

@@ -10,6 +10,7 @@ const errorHandler = require("./middleware/errorHandler");
 const projectBriefRoutes = require("./routes/projectBriefs");
 const inspirationRoutes = require("./routes/inspiration");
 const newsletterRoutes = require("./routes/newsletter");
+const authRoutes = require("./routes/auth");
 
 const app = express();
 
@@ -31,14 +32,18 @@ app.get("/api/health", (req, res) => {
 app.use("/api/project-briefs", projectBriefRoutes);
 app.use("/api/inspiration", inspirationRoutes);
 app.use("/api/newsletter", newsletterRoutes);
+app.use("/api/auth", authRoutes);
 
-// 404 handler
+
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found." });
 });
 
-// Centralized error handler — must be last
+
 app.use(errorHandler);
+
+const { verifyEmailConnection } = require("./services/emailService");
+verifyEmailConnection();
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

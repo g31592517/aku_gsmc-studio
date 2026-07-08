@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import akuLogo from "../assets/logo.jpeg";
+import AuthModal from "./AuthModal";
 
 const navigationLinks = [
   { label: "Work", href: "#work" },
@@ -14,6 +15,7 @@ const navigationLinks = [
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hideNav, setHideNav] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -84,7 +86,10 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <button className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
+            >
               Sign In
             </button>
             <button className="text-sm font-semibold bg-aku-primary text-white px-5 py-2.5 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95">
@@ -152,6 +157,11 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </>
   );
 }
