@@ -66,7 +66,8 @@ export default function AuthModal({ isOpen, onClose }) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:4000/api/auth/sign-in", {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const response = await fetch(`${apiUrl}/api/auth/sign-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
