@@ -1,14 +1,19 @@
 const nodemailer = require("nodemailer");
 
-const transporter = nodemailer.createTransport({
+const transportConfig = {
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === "true",
-  auth: {
+};
+
+if (process.env.SMTP_USER) {
+  transportConfig.auth = {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
-  },
-});
+  };
+}
+
+const transporter = nodemailer.createTransport(transportConfig);
 
 async function verifyEmailConnection() {
   try {
@@ -63,7 +68,7 @@ ${new Date(submittedAt).toLocaleString("en-GB", { timeZone: "Africa/Nairobi" })}
   `.trim();
 
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: requesterEmail,
     to: process.env.EMAIL_TO,
     replyTo: requesterEmail,
     subject: `New ${selectedService} Request \u2014 ${requesterEmail}`,
@@ -74,8 +79,9 @@ ${new Date(submittedAt).toLocaleString("en-GB", { timeZone: "Africa/Nairobi" })}
 }
 
 async function sendRequesterConfirmationEmail({ requesterEmail, selectedService }) {
+  const fromAddress = process.env.EMAIL_FROM || "aku-creative@aku.edu";
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: `"AKU Creative Services" <${fromAddress}>`,
     to: requesterEmail,
     subject: "We received your project request \u2014 AKU Creative Services",
     text: `
