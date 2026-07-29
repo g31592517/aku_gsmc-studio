@@ -99,44 +99,12 @@ export default function Hero() {
         aria-hidden="true"
       />
 
-      {/* Floating service pills — desktop only (commented out for now)
-      {floatingServiceIndicators.map(({ icon: Icon, label, position, animationDelay, bgColor }) => (
-        <motion.div
-          key={label}
-          className="absolute hidden lg:flex items-center gap-2.5 bg-white rounded-full px-4 py-2.5 shadow-card border border-surface-border"
-          style={position}
-          animate={{ y: [0, -10, 0] }}
-          transition={{
-            duration: 7,
-            delay: animationDelay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          aria-hidden="true"
-        >
-          <div
-            className={`w-7 h-7 rounded-full ${bgColor} flex items-center justify-center flex-shrink-0`}
-          >
-            <Icon size={14} className="text-white" />
-          </div>
-          <span className="text-xs font-semibold text-text-secondary whitespace-nowrap">
-            {label}
-          </span>
-        </motion.div>
-      )}
-      */}
+
 
       {/* ── Main content ── */}
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
 
 
-        {/*
-          ── Headline ──
-          Line 1: dark solid text — "Turn Your Ideas Into"
-          Line 2: gradient text — "Stunning Visual" (dark green gradient, readable)
-          Line 3: dark solid text — "Experiences."
-          clamp() keeps it proportional — no stretching.
-        */}
         <motion.h1
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -163,11 +131,6 @@ export default function Hero() {
           bring your vision to life with Gurus wenye wanaelewa story yako.
         </motion.p>
 
-        {/*
-          ── CTA Buttons ──
-          Primary: solid AKU green, white text, pill shape, shadow
-          Secondary: white bg, green border, green text — styled, not plain
-        */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -237,10 +200,6 @@ export default function Hero() {
           </a>
         </motion.div>
 
-        {/*
-          ── Stats ──
-          Numbers: bold dark green. Labels: muted. Clear dividers between them.
-        */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}

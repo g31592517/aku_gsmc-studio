@@ -37,11 +37,11 @@ const availableServices = [
 ];
 
 const projectBudgetOptions = [
-  "Under $500",
-  "$500 – $1,500",
-  "$1,500 – $5,000",
-  "$5,000 – $15,000",
-  "$15,000+",
+  "Under Ksh.500",
+  "Ksh.500 – Ksh.1,500",
+  "Ksh.1,500 – Ksh5,000",
+  "Ksh5,000 – Ksh15,000",
+  "Ksh.15,000+",
 ];
 
 function getUploadedFileIcon(mimeType) {

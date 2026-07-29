@@ -23,27 +23,7 @@ CREATE TABLE IF NOT EXISTS brief_attachments (
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Inspiration gallery items
-CREATE TABLE IF NOT EXISTS inspiration_items (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(150) NOT NULL,
-  description TEXT,
-  category VARCHAR(80) NOT NULL,
-  image_url VARCHAR(500) NOT NULL,
-  like_count INTEGER NOT NULL DEFAULT 0,
-  save_count INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Newsletter / "Start Project" quick interest signups
-CREATE TABLE IF NOT EXISTS newsletter_subscribers (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(150) UNIQUE NOT NULL,
-  subscribed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE INDEX IF NOT EXISTS idx_briefs_status ON project_briefs(status);
-CREATE INDEX IF NOT EXISTS idx_inspiration_category ON inspiration_items(category);
 
 -- User sign-in / contact registry
 CREATE TABLE IF NOT EXISTS users (

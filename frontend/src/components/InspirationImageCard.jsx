@@ -33,17 +33,6 @@ export default function InspirationImageCard({ item, onOpenLightbox }) {
         />
       )}
 
-      {/*
-        The image.
-
-        Rules that must never be broken here:
-        - No filter or blur on this element or any ancestor in this component
-        - No backdrop-filter anywhere in this component
-        - will-change: transform + translateZ(0) prevents the GPU compositing
-          layer from softening the image during scroll
-        - opacity fades in after load to prevent layout shift, then stays at 1
-          and never changes again — not on hover, not on scroll, not ever
-      */}
       <img
         src={item.imageUrl}
         alt={item.title}
@@ -62,37 +51,15 @@ export default function InspirationImageCard({ item, onOpenLightbox }) {
         draggable={false}
       />
 
-      {/*
-        Very light bottom gradient — only enough to ensure the
-        category badge text is readable against any image colour.
-        This is NOT a full dark overlay. The image must remain clearly
-        visible and the creative work must be immediately appreciable.
-        No backdrop-filter here.
-      */}
       <div
         className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"
         aria-hidden="true"
       />
 
-      {/*
-        Category badge.
-        This is the ONLY text that appears on the card.
-        No title. No description. No "View Details". Nothing else.
-      */}
       <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold text-white bg-aku-primary shadow-sm">
         {item.category}
       </span>
 
-      {/*
-        Hover state.
-        - No blur
-        - No dim
-        - No opacity reduction on the image
-        - Just a very slight darkening of the overlay (bg-black/10)
-          and a magnifier dot in the centre to signal "click to preview"
-        - The card border and shadow do the heavy lifting for the
-          "premium interactive" feel — handled by Tailwind classes above
-      */}
       <div
         className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none flex items-center justify-center"
         aria-hidden="true"

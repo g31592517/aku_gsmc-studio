@@ -8,8 +8,7 @@ const path = require("path");
 
 const errorHandler = require("./middleware/errorHandler");
 const projectBriefRoutes = require("./routes/projectBriefs");
-const inspirationRoutes = require("./routes/inspiration");
-const newsletterRoutes = require("./routes/newsletter");
+
 const authRoutes = require("./routes/auth");
 
 const app = express();
@@ -30,8 +29,7 @@ app.get("/api/health", (req, res) => {
 
 // Feature routes
 app.use("/api/project-briefs", projectBriefRoutes);
-app.use("/api/inspiration", inspirationRoutes);
-app.use("/api/newsletter", newsletterRoutes);
+
 app.use("/api/auth", authRoutes);
 
 
