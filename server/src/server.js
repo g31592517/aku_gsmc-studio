@@ -10,6 +10,7 @@ const errorHandler = require("./middleware/errorHandler");
 const projectBriefRoutes = require("./routes/projectBriefs");
 
 const authRoutes = require("./routes/auth");
+const serviceRequestRoutes = require("./routes/serviceRequests");
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/project-briefs", projectBriefRoutes);
 
 app.use("/api/auth", authRoutes);
+app.use("/api/service-requests", serviceRequestRoutes);
 
 
 app.use((req, res) => {

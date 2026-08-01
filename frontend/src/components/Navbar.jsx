@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import akuLogo from "../assets/logo.jpeg";
 import AuthModal from "./AuthModal";
+import { useCurrentUser } from "../context/UserContext";
 
 const navigationLinks = [
   { label: "Work", href: "#work" },
@@ -13,6 +14,7 @@ const navigationLinks = [
 ];
 
 export default function Navbar() {
+  const { currentUser, signOut } = useCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hideNav, setHideNav] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -86,15 +88,34 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
-            >
-              Sign In
-            </button>
-            <button className="text-sm font-semibold bg-aku-primary text-white px-5 py-2.5 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95">
-              Submit your ideas, 
-            </button>
+            {currentUser ? (
+              <>
+                <a
+                  href="/my-requests"
+                  className="text-sm font-medium text-text-secondary hover:text-aku-green transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
+                >
+                  My Requests
+                </a>
+                <button
+                  onClick={signOut}
+                  className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
+                >
+                  Sign In
+                </button>
+                <button className="text-sm font-semibold bg-aku-primary text-white px-5 py-2.5 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95">
+                  Start Project
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile toggle */}

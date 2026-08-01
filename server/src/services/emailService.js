@@ -41,7 +41,7 @@ async function sendServiceRequestEmail({
 
   const emailBody = `
 New Service Request \u2014 AKU Creative Services
-============================================
+
 
 Requester Details
 -----------------
@@ -89,7 +89,41 @@ Hi,
 
 Thank you for submitting your ${selectedService} request to AKU Creative Services.
 
-We have received your brief and will be in touch within 24 hours to discuss next steps.
+We have received your brief and we'll start working on it as soon as possible.
+
+We will get back to you once the work has been done. Feel free to request more services.
+
+We deliver the best outcome. 
+
+Best regards,
+AKU Graduate School of Media and Communications
+    `.trim(),
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendStatusUpdateEmail({ requesterEmail, requestId, newStatus }) {
+  const readableStatus = {
+    pending: "Pending",
+    assigned: "Assigned to a team member",
+    "in-progress": "In Progress",
+    "awaiting-review": "Awaiting Review",
+    completed: "Completed",
+  };
+
+  const mailOptions = {
+    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    to: requesterEmail,
+    subject: `Your request has been updated — AKU Creative Services`,
+    text: `
+Hi,
+
+Your service request (ID: ${requestId}) has been updated.
+
+Current Status: ${readableStatus[newStatus] || newStatus}
+
+You can log in to AKU Creative Services to view the full details of your request.
 
 Best regards,
 AKU Graduate School of Media and Communications
@@ -103,4 +137,5 @@ module.exports = {
   verifyEmailConnection,
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
+  sendStatusUpdateEmail,
 };

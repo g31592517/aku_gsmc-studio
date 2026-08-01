@@ -3,7 +3,7 @@ require("dotenv").config();
 
 
 const pool = new Pool(
-  process.env.DATABASE_URL // This is the onse used for extrernal database. Render specifically, the one i used on this project. 
+  process.env.DATABASE_URL //for config with the exterbal database 
     ? {
         connectionString: process.env.DATABASE_URL,
 

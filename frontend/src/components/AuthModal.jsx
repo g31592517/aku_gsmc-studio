@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Phone } from "lucide-react";
+import { useCurrentUser } from "../context/UserContext";
 
 const initialFormState = { email: "", contactNumber: "" };
 
@@ -19,6 +20,7 @@ function validateContactNumber(value) {
 }
 
 export default function AuthModal({ isOpen, onClose }) {
+  const { signIn } = useCurrentUser();
   const [formValues, setFormValues] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState(initialErrorState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +81,7 @@ export default function AuthModal({ isOpen, onClose }) {
       const data = await response.json();
 
       if (data.success) {
+        signIn(data.data);
         setIsSuccess(true);
       } else {
         setFormErrors((prev) => ({
