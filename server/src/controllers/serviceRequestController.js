@@ -1,4 +1,4 @@
-const pool = require("../config/database");
+const { pool } = require("../config/database");
 const {
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
@@ -11,11 +11,23 @@ const ALLOWED_STATUSES = [
   "in-progress",
   "awaiting-review",
   "completed",
+  "declined",
 ];
 
-// Client submits a new service request
+// Resolves a service category name to its ID
+async function resolveCategoryId(serviceName) {
+  const [rows] = await pool.execute(
+    "SELECT id FROM service_categories WHERE name = ?",
+    [serviceName]
+  );
+  if (rows.length === 0) {
+    throw new Error(`Unknown service category: ${serviceName}`);
+  }
+  return rows[0].id;
+}
+
 async function createServiceRequest(req, res, next) {
-  const client = await pool.connect();
+  const connection = await pool.getConnection();
 
   try {
     const {
@@ -27,17 +39,17 @@ async function createServiceRequest(req, res, next) {
       additionalNotes,
     } = req.body;
 
-    await client.query("BEGIN");
+    const categoryId = await resolveCategoryId(serviceType);
 
-    // Insert the request
-    const requestResult = await client.query(
+    await connection.beginTransaction();
+
+    const [requestResult] = await connection.execute(
       `INSERT INTO service_requests
-        (user_id, service_type, project_vision, budget_range, project_deadline, additional_notes)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, status, created_at`,
+        (user_id, service_category_id, project_vision, budget_range, project_deadline, additional_notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        serviceType,
+        categoryId,
         projectVision,
         budgetRange || null,
         projectDeadline || null,
@@ -45,38 +57,38 @@ async function createServiceRequest(req, res, next) {
       ]
     );
 
-    const newRequest = requestResult.rows[0];
+    const newRequestId = requestResult.insertId;
 
-    // Record initial status in history
-    await client.query(
+    // Record the initial status in history
+    await connection.execute(
       `INSERT INTO request_status_history
         (request_id, previous_status, new_status, changed_by_note)
-       VALUES ($1, NULL, 'pending', 'Request submitted by client')`,
-      [newRequest.id]
+       VALUES (?, NULL, 'pending', 'Request submitted by client')`,
+      [newRequestId]
     );
 
-    // Save any uploaded attachments
+    // Save any uploaded files
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        await client.query(
+        await connection.execute(
           `INSERT INTO request_attachments
             (request_id, file_name, file_path, mime_type, file_size_bytes)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [newRequest.id, file.originalname, file.filename, file.mimetype, file.size]
+           VALUES (?, ?, ?, ?, ?)`,
+          [newRequestId, file.originalname, file.filename, file.mimetype, file.size]
         );
       }
     }
 
-    await client.query("COMMIT");
+    await connection.commit();
 
-    // Fetch user details for email notifications
-    const userResult = await pool.query(
-      "SELECT email, contact_number FROM users WHERE id = $1",
+    // Send email notifications in the background
+    const [userRows] = await pool.execute(
+      "SELECT email, contact_number FROM users WHERE id = ?",
       [userId]
     );
-    const user = userResult.rows[0];
 
-    if (user) {
+    if (userRows.length > 0) {
+      const user = userRows[0];
       const attachmentFilenames = (req.files || []).map((f) => f.originalname);
 
       sendServiceRequestEmail({
@@ -87,7 +99,7 @@ async function createServiceRequest(req, res, next) {
         budgetRange,
         projectDeadline,
         attachmentFilenames,
-        submittedAt: newRequest.created_at,
+        submittedAt: new Date(),
       }).catch((err) => console.error("Internal request email failed:", err));
 
       sendRequesterConfirmationEmail({
@@ -99,94 +111,94 @@ async function createServiceRequest(req, res, next) {
     res.status(201).json({
       success: true,
       message: "Service request submitted successfully.",
-      data: { requestId: newRequest.id, status: newRequest.status },
+      data: { requestId: newRequestId, status: "pending" },
     });
   } catch (error) {
-    await client.query("ROLLBACK");
+    await connection.rollback();
     next(error);
   } finally {
-    client.release();
+    connection.release();
   }
 }
 
-// Client fetches all their own requests
 async function getRequestsByUser(req, res, next) {
   try {
     const { userId } = req.params;
 
-    const result = await pool.query(
+    const [rows] = await pool.execute(
       `SELECT
          sr.id,
-         sr.service_type,
+         sc.name AS service_type,
          sr.status,
          sr.budget_range,
          sr.project_deadline,
          sr.created_at,
          sr.updated_at
        FROM service_requests sr
-       WHERE sr.user_id = $1
+       JOIN service_categories sc ON sc.id = sr.service_category_id
+       WHERE sr.user_id = ?
        ORDER BY sr.created_at DESC`,
       [userId]
     );
 
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: rows });
   } catch (error) {
     next(error);
   }
 }
 
-// Client or staff fetches a single request — no internal notes for client
 async function getRequestById(req, res, next) {
   try {
     const { id } = req.params;
-    const { includeNotes } = req.query;
+    const includeNotes = req.query.includeNotes === "true";
 
-    const requestResult = await pool.query(
+    const [requestRows] = await pool.execute(
       `SELECT
          sr.*,
+         sc.name AS service_type,
          u.email AS client_email,
          u.contact_number AS client_contact
        FROM service_requests sr
+       JOIN service_categories sc ON sc.id = sr.service_category_id
        JOIN users u ON u.id = sr.user_id
-       WHERE sr.id = $1`,
+       WHERE sr.id = ?`,
       [id]
     );
 
-    if (requestResult.rows.length === 0) {
+    if (requestRows.length === 0) {
       return res.status(404).json({ success: false, message: "Request not found." });
     }
 
-    const attachmentsResult = await pool.query(
+    const [attachments] = await pool.execute(
       `SELECT id, file_name, mime_type, file_size_bytes, uploaded_at
        FROM request_attachments
-       WHERE request_id = $1`,
+       WHERE request_id = ?`,
       [id]
     );
 
-    const historyResult = await pool.query(
+    const [statusHistory] = await pool.execute(
       `SELECT previous_status, new_status, changed_at, changed_by_note
        FROM request_status_history
-       WHERE request_id = $1
+       WHERE request_id = ?
        ORDER BY changed_at ASC`,
       [id]
     );
 
     const responseData = {
-      ...requestResult.rows[0],
-      attachments: attachmentsResult.rows,
-      statusHistory: historyResult.rows,
+      ...requestRows[0],
+      attachments,
+      statusHistory,
     };
 
-    // Internal notes are only included when the staff dashboard requests them
-    if (includeNotes === "true") {
-      const notesResult = await pool.query(
+    if (includeNotes) {
+      const [notes] = await pool.execute(
         `SELECT id, note_text, created_at
          FROM request_internal_notes
-         WHERE request_id = $1
+         WHERE request_id = ?
          ORDER BY created_at ASC`,
         [id]
       );
-      responseData.internalNotes = notesResult.rows;
+      responseData.internalNotes = notes;
     }
 
     res.json({ success: true, data: responseData });
@@ -195,7 +207,6 @@ async function getRequestById(req, res, next) {
   }
 }
 
-// Staff fetches all requests with optional filters
 async function getAllRequests(req, res, next) {
   try {
     const { status, serviceType, clientEmail } = req.query;
@@ -203,13 +214,14 @@ async function getAllRequests(req, res, next) {
     let query = `
       SELECT
         sr.id,
-        sr.service_type,
+        sc.name AS service_type,
         sr.status,
         sr.created_at,
         sr.updated_at,
         u.email AS client_email,
         u.contact_number AS client_contact
       FROM service_requests sr
+      JOIN service_categories sc ON sc.id = sr.service_category_id
       JOIN users u ON u.id = sr.user_id
       WHERE 1=1
     `;
@@ -217,33 +229,32 @@ async function getAllRequests(req, res, next) {
     const params = [];
 
     if (status) {
+      query += " AND sr.status = ?";
       params.push(status);
-      query += ` AND sr.status = $${params.length}`;
     }
 
     if (serviceType) {
+      query += " AND sc.name = ?";
       params.push(serviceType);
-      query += ` AND sr.service_type = $${params.length}`;
     }
 
     if (clientEmail) {
+      query += " AND u.email LIKE ?";
       params.push(`%${clientEmail}%`);
-      query += ` AND u.email ILIKE $${params.length}`;
     }
 
     query += " ORDER BY sr.created_at DESC";
 
-    const result = await pool.query(query, params);
+    const [rows] = await pool.execute(query, params);
 
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: rows });
   } catch (error) {
     next(error);
   }
 }
 
-// Staff updates the status of a request
 async function updateRequestStatus(req, res, next) {
-  const client = await pool.connect();
+  const connection = await pool.getConnection();
 
   try {
     const { id } = req.params;
@@ -253,49 +264,44 @@ async function updateRequestStatus(req, res, next) {
       return res.status(400).json({ success: false, message: "Invalid status value." });
     }
 
-    await client.query("BEGIN");
+    await connection.beginTransaction();
 
-    // Get the current status before updating
-    const currentResult = await client.query(
-      "SELECT status, user_id FROM service_requests WHERE id = $1",
+    const [currentRows] = await connection.execute(
+      "SELECT status, user_id FROM service_requests WHERE id = ?",
       [id]
     );
 
-    if (currentResult.rows.length === 0) {
-      await client.query("ROLLBACK");
+    if (currentRows.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ success: false, message: "Request not found." });
     }
 
-    const previousStatus = currentResult.rows[0].status;
-    const userId = currentResult.rows[0].user_id;
+    const previousStatus = currentRows[0].status;
+    const userId = currentRows[0].user_id;
 
-    // Update the request
-    await client.query(
-      `UPDATE service_requests
-       SET status = $1, updated_at = NOW()
-       WHERE id = $2`,
+    await connection.execute(
+      "UPDATE service_requests SET status = ?, updated_at = NOW() WHERE id = ?",
       [newStatus, id]
     );
 
-    // Record the status change in history
-    await client.query(
+    await connection.execute(
       `INSERT INTO request_status_history
         (request_id, previous_status, new_status, changed_by_note)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES (?, ?, ?, ?)`,
       [id, previousStatus, newStatus, staffNote || null]
     );
 
-    await client.query("COMMIT");
+    await connection.commit();
 
-    // Notify the client of the status change
-    const userResult = await pool.query(
-      "SELECT email FROM users WHERE id = $1",
+    // Notify the client by email
+    const [userRows] = await pool.execute(
+      "SELECT email FROM users WHERE id = ?",
       [userId]
     );
 
-    if (userResult.rows.length > 0) {
+    if (userRows.length > 0) {
       sendStatusUpdateEmail({
-        requesterEmail: userResult.rows[0].email,
+        requesterEmail: userRows[0].email,
         requestId: id,
         newStatus,
       }).catch((err) => console.error("Status update email failed:", err));
@@ -307,47 +313,49 @@ async function updateRequestStatus(req, res, next) {
       data: { requestId: id, previousStatus, newStatus },
     });
   } catch (error) {
-    await client.query("ROLLBACK");
+    await connection.rollback();
     next(error);
   } finally {
-    client.release();
+    connection.release();
   }
 }
 
-// Staff adds an internal note to a request
 async function addInternalNote(req, res, next) {
   try {
     const { id } = req.params;
     const { noteText } = req.body;
 
-    const result = await pool.query(
+    const [result] = await pool.execute(
       `INSERT INTO request_internal_notes (request_id, note_text)
-       VALUES ($1, $2)
-       RETURNING id, note_text, created_at`,
+       VALUES (?, ?)`,
       [id, noteText.trim()]
     );
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const [noteRows] = await pool.execute(
+      "SELECT id, note_text, created_at FROM request_internal_notes WHERE id = ?",
+      [result.insertId]
+    );
+
+    res.status(201).json({ success: true, data: noteRows[0] });
   } catch (error) {
     next(error);
   }
 }
 
-// Dashboard summary counts for the staff overview
 async function getDashboardSummary(req, res, next) {
   try {
-    const result = await pool.query(
+    const [rows] = await pool.execute(
       `SELECT
          COUNT(*) AS total,
-         COUNT(*) FILTER (WHERE status = 'pending') AS pending,
-         COUNT(*) FILTER (WHERE status = 'assigned') AS assigned,
-         COUNT(*) FILTER (WHERE status = 'in-progress') AS in_progress,
-         COUNT(*) FILTER (WHERE status = 'awaiting-review') AS awaiting_review,
-         COUNT(*) FILTER (WHERE status = 'completed') AS completed
+         SUM(status = 'pending') AS pending,
+         SUM(status = 'assigned') AS assigned,
+         SUM(status = 'in-progress') AS in_progress,
+         SUM(status = 'awaiting-review') AS awaiting_review,
+         SUM(status = 'completed') AS completed
        FROM service_requests`
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
     next(error);
   }

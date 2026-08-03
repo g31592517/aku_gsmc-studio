@@ -1,88 +1,122 @@
--- Project briefs submitted via the multi-step form
-CREATE TABLE IF NOT EXISTS project_briefs (
-  id SERIAL PRIMARY KEY,
-  service_type VARCHAR(50) NOT NULL,
-  project_vision TEXT NOT NULL,
-  client_name VARCHAR(150) NOT NULL,
-  client_email VARCHAR(150) NOT NULL,
-  budget_range VARCHAR(50) NOT NULL,
-  project_deadline DATE,
-  additional_notes TEXT,
-  status VARCHAR(30) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Run this file to create or reset the database schema.
+-- mysql -u root -p aku_creative < src/db/schema.sql
 
--- Files uploaded as inspiration for a project brief
-CREATE TABLE IF NOT EXISTS brief_attachments (
-  id SERIAL PRIMARY KEY,
-  brief_id INTEGER NOT NULL REFERENCES project_briefs(id) ON DELETE CASCADE,
-  file_name VARCHAR(255) NOT NULL,
-  file_path VARCHAR(500) NOT NULL,
-  mime_type VARCHAR(100) NOT NULL,
-  file_size_bytes INTEGER NOT NULL,
-  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+CREATE DATABASE IF NOT EXISTS aku_creative
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
-CREATE INDEX IF NOT EXISTS idx_briefs_status ON project_briefs(status);
+USE aku_creative;
 
--- User sign-in / contact registry
+-- ─── USERS ────────────────────────────────────────────────────────────────────
+-- Stores everyone who interacts with the system.
+-- role: 'client' | 'staff' | 'admin'
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(150) UNIQUE NOT NULL,
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email       VARCHAR(150) NOT NULL UNIQUE,
   contact_number VARCHAR(30) NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  role        ENUM('client', 'staff', 'admin') NOT NULL DEFAULT 'client',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+-- ─── SERVICE CATEGORIES ───────────────────────────────────────────────────────
+-- Defines the available creative service types.
+-- Populated once via the setup script — not by end users.
+CREATE TABLE IF NOT EXISTS service_categories (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT,
+  is_active   TINYINT(1) NOT NULL DEFAULT 1,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
--- Stores all submitted service requests with ownership
+-- ─── SERVICE REQUESTS ─────────────────────────────────────────────────────────
+-- One row per request submitted by a client.
+-- assigned_to links to the staff member handling the request.
 CREATE TABLE IF NOT EXISTS service_requests (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  service_type VARCHAR(100) NOT NULL,
-  project_vision TEXT NOT NULL,
-  budget_range VARCHAR(50),
-  project_deadline DATE,
-  additional_notes TEXT,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id           INT UNSIGNED NOT NULL,
+  service_category_id INT UNSIGNED NOT NULL,
+  project_vision    TEXT NOT NULL,
+  budget_range      VARCHAR(50),
+  project_deadline  DATE,
+  additional_notes  TEXT,
+  status            ENUM('pending','assigned','in-progress','awaiting-review','completed','declined')
+                    NOT NULL DEFAULT 'pending',
+  assigned_to       INT UNSIGNED,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_request_user
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+  CONSTRAINT fk_request_category
+    FOREIGN KEY (service_category_id) REFERENCES service_categories(id),
+
+  CONSTRAINT fk_request_assigned
+    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Stores files attached to a service request
+-- ─── REQUEST ATTACHMENTS ──────────────────────────────────────────────────────
+-- Files uploaded alongside a service request.
 CREATE TABLE IF NOT EXISTS request_attachments (
-  id SERIAL PRIMARY KEY,
-  request_id INTEGER NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
-  file_name VARCHAR(255) NOT NULL,
-  file_path VARCHAR(500) NOT NULL,
-  mime_type VARCHAR(100) NOT NULL,
-  file_size_bytes INTEGER NOT NULL,
-  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  request_id       INT UNSIGNED NOT NULL,
+  file_name        VARCHAR(255) NOT NULL,
+  file_path        VARCHAR(500) NOT NULL,
+  mime_type        VARCHAR(100) NOT NULL,
+  file_size_bytes  INT UNSIGNED NOT NULL,
+  uploaded_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_attachment_request
+    FOREIGN KEY (request_id) REFERENCES service_requests(id) ON DELETE CASCADE
 );
 
--- Tracks every status change on a request — full audit trail
+-- ─── REQUEST STATUS HISTORY ───────────────────────────────────────────────────
+-- Full audit trail of every status change on every request.
 CREATE TABLE IF NOT EXISTS request_status_history (
-  id SERIAL PRIMARY KEY,
-  request_id INTEGER NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
-  previous_status VARCHAR(50),
-  new_status VARCHAR(50) NOT NULL,
-  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  changed_by_note TEXT
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  request_id       INT UNSIGNED NOT NULL,
+  previous_status  VARCHAR(50),
+  new_status       VARCHAR(50) NOT NULL,
+  changed_by_note  TEXT,
+  changed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_history_request
+    FOREIGN KEY (request_id) REFERENCES service_requests(id) ON DELETE CASCADE
 );
 
--- Internal notes visible only to the Graphics & Design team
+-- ─── INTERNAL NOTES ───────────────────────────────────────────────────────────
+-- Notes added by staff. Never exposed to clients.
 CREATE TABLE IF NOT EXISTS request_internal_notes (
-  id SERIAL PRIMARY KEY,
-  request_id INTEGER NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
-  note_text TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  request_id  INT UNSIGNED NOT NULL,
+  author_id   INT UNSIGNED,
+  note_text   TEXT NOT NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_note_request
+    FOREIGN KEY (request_id) REFERENCES service_requests(id) ON DELETE CASCADE,
+
+  CONSTRAINT fk_note_author
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_requests_user_id
-  ON service_requests(user_id);
+-- ─── INDEXES ──────────────────────────────────────────────────────────────────
+CREATE INDEX idx_requests_user_id      ON service_requests(user_id);
+CREATE INDEX idx_requests_status       ON service_requests(status);
+CREATE INDEX idx_requests_assigned_to  ON service_requests(assigned_to);
+CREATE INDEX idx_attachments_request   ON request_attachments(request_id);
+CREATE INDEX idx_history_request       ON request_status_history(request_id);
+CREATE INDEX idx_notes_request         ON request_internal_notes(request_id);
+CREATE INDEX idx_users_email           ON users(email);
 
-CREATE INDEX IF NOT EXISTS idx_service_requests_status
-  ON service_requests(status);
-
-CREATE INDEX IF NOT EXISTS idx_request_status_history_request_id
-  ON request_status_history(request_id);
+-- ─── DEFAULT SERVICE CATEGORIES ───────────────────────────────────────────────
+INSERT INTO service_categories (name, description) VALUES
+  ('Flyer & Poster Design',     'Event flyers, promotional posters and print-ready artwork'),
+  ('Print & Publication Design','Booklets, newsletters, brochures and formal publications'),
+  ('Merchandise & Mockup Design','Branded merchandise concepts and product mockups'),
+  ('Animated Explainer Videos', 'Short animations for campaigns, education and communication'),
+  ('Podcast Production',        'Full podcast production including video and audio editing'),
+  ('Professional Videography & Photography', 'Event coverage, portraits, interviews and brand shoots')
+ON DUPLICATE KEY UPDATE name = VALUES(name);

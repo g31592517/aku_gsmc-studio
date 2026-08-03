@@ -1,19 +1,24 @@
-const pool = require("../config/database");
+const { pool } = require("../config/database");
 
 async function signIn(req, res, next) {
   try {
     const { email, contactNumber } = req.body;
+    const normalisedEmail = email.toLowerCase().trim();
 
-    const result = await pool.query(
+    // Upsert — insert new user or update contact number if they return
+    await pool.execute(
       `INSERT INTO users (email, contact_number)
-       VALUES ($1, $2)
-       ON CONFLICT (email)
-       DO UPDATE SET contact_number = EXCLUDED.contact_number
-       RETURNING id, email, contact_number, created_at`,
-      [email.toLowerCase().trim(), contactNumber.trim()]
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE contact_number = VALUES(contact_number)`,
+      [normalisedEmail, contactNumber.trim()]
     );
 
-    const user = result.rows[0];
+    const [rows] = await pool.execute(
+      "SELECT id, email, contact_number, role, created_at FROM users WHERE email = ?",
+      [normalisedEmail]
+    );
+
+    const user = rows[0];
 
     res.status(200).json({
       success: true,
@@ -22,6 +27,7 @@ async function signIn(req, res, next) {
         userId: user.id,
         email: user.email,
         contactNumber: user.contact_number,
+        role: user.role,
         createdAt: user.created_at,
       },
     });

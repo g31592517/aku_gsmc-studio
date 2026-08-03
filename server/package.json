@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "db:setup": "psql -U postgres -d aku_creative -f src/db/schema.sql"
+    "db:setup": "mysql -u $DB_USER -p$DB_PASSWORD < src/db/schema.sql"
   },
   "keywords": [],
   "author": "",
@@ -20,8 +20,8 @@
     "helmet": "^8.2.0",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
-    "nodemailer": "^9.0.3",
-    "pg": "^8.21.0"
+    "mysql2": "^3.23.2",
+    "nodemailer": "^9.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
