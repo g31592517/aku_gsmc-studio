@@ -1,34 +1,66 @@
-const mysql = require("mysql2/promise");
+const sql = require("mssql");
 require("dotenv").config();
 
 /*
-  Creates a connection pool.
-  mysql2/promise gives us async/await support out of the box.
-  All queries across the application use this pool.
+  SQL Server connection pool configuration.
+
+  mssql uses a singleton pool — calling sql.connect() returns the same
+  pool instance on subsequent calls once it has been initialised.
+
+  All queries use this pool via the sql object exported below.
+
+  Authentication:
+  - If DB_USER is set, SQL Server authentication is used.
+  - If DB_USER is empty, Windows Authentication (trusted connection)
+    is used — the app connects as the Windows user running it.
 */
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 3306,
+const useWindowsAuth = !process.env.DB_USER;
+
+const connectionConfig = {
+  server: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT) || 1433,
   database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  // Enable SSL for cloud-hosted MySQL providers.
-  // Set DB_SSL=true in .env when required.
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-});
+  ...(!useWindowsAuth && {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+  }),
+  options: {
+    // Use Windows Authentication when no SQL login is configured
+    trustedConnection: useWindowsAuth,
+
+    // Required for Azure SQL and most cloud-hosted SQL Server instances.
+    // Set DB_ENCRYPT=true in .env for production.
+    encrypt: process.env.DB_ENCRYPT === "true",
+
+    // Allow self-signed certificates on local development instances.
+    // Always false in production.
+    trustServerCertificate: process.env.DB_TRUST_CERT === "true",
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
+};
+
+let pool = null;
+
+async function getPool() {
+  if (!pool) {
+    pool = await sql.connect(connectionConfig);
+  }
+  return pool;
+}
 
 async function verifyDatabaseConnection() {
   try {
-    const connection = await pool.getConnection();
-    console.log("Connected to MySQL database.");
-    connection.release();
+    const connection = await getPool();
+    await connection.request().query("SELECT 1 AS connected");
+    console.log("Connected to Microsoft SQL Server.");
   } catch (error) {
-    console.error("Could not connect to MySQL database:", error.message);
+    console.error("Could not connect to SQL Server:", error.message);
     process.exit(1);
   }
 }
 
-module.exports = { pool, verifyDatabaseConnection };
+module.exports = { sql, getPool, verifyDatabaseConnection };

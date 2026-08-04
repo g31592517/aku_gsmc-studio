@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "db:setup": "mysql -u $DB_USER -p$DB_PASSWORD < src/db/schema.sql"
+    "db:setup": "sqlcmd -S %DB_HOST% -U %DB_USER% -P %DB_PASSWORD% -i src/db/schema.sql"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +19,8 @@
     "express-validator": "^7.3.2",
     "helmet": "^8.2.0",
     "morgan": "^1.11.0",
+    "mssql": "^12.7.0",
     "multer": "^2.2.0",
-    "mysql2": "^3.23.2",
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
