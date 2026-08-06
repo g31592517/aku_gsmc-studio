@@ -12,8 +12,17 @@ import {
   Check,
   ChevronRight,
 } from "lucide-react";
+import { useCurrentUser } from "../context/UserContext";
+import { apiFetch } from "../utils/api";
 
 const WIZARD_STEPS = ["Service", "Vision", "Assets", "Details", "Review"];
+
+// service id -> exact `name` in the service_categories table
+const SERVICE_CATEGORY_NAMES = {
+  videography: "Videography",
+  photography: "Photography",
+  "audio-editing": "Audio Editing",
+};
 
 const availableServices = [
   {
@@ -51,24 +60,26 @@ function getUploadedFileIcon(mimeType) {
 }
 
 export default function ProjectSubmissionWizard() {
+  const { currentUser, openAuthModal } = useCurrentUser();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [projectVision, setProjectVision] = useState("");
   const [uploadedInspirationFiles, setUploadedInspirationFiles] = useState([]);
   const [projectDetails, setProjectDetails] = useState({
-    clientName: "",
-    clientEmail: "",
     budgetRange: "",
     projectDeadline: "",
     additionalNotes: "",
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
 
   const fileInputRef = useRef(null);
 
   const handleFileSelection = (incomingFiles) => {
     const newFiles = Array.from(incomingFiles).map((file) => ({
+      file,
       fileName: file.name,
       mimeType: file.type,
       fileSizeBytes: file.size,
@@ -93,11 +104,43 @@ export default function ProjectSubmissionWizard() {
     selectedService !== null,
     projectVision.trim().length > 10,
     true, // assets step is optional
-    projectDetails.clientName && projectDetails.clientEmail && projectDetails.budgetRange,
+    !!projectDetails.budgetRange,
     true, // review step always completable
   ];
 
-  const handleFinalSubmission = () => setIsSubmitted(true);
+  const handleFinalSubmission = async () => {
+    if (!currentUser) return;
+
+    setSubmissionError("");
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("serviceType", SERVICE_CATEGORY_NAMES[selectedService]);
+      formData.append("projectVision", projectVision);
+      formData.append("budgetRange", projectDetails.budgetRange);
+      if (projectDetails.projectDeadline) {
+        formData.append("projectDeadline", projectDetails.projectDeadline);
+      }
+      formData.append("additionalNotes", projectDetails.additionalNotes);
+      uploadedInspirationFiles.forEach(({ file }) => formData.append("attachments", file));
+
+      const submitResponse = await apiFetch("/api/service-requests", {
+        method: "POST",
+        body: formData,
+      });
+      const submitData = await submitResponse.json();
+      if (!submitData.success) {
+        throw new Error(submitData.message || "Could not submit your brief.");
+      }
+
+      setIsSubmitted(true);
+    } catch (error) {
+      setSubmissionError(error.message || "Could not connect to the server. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const resetWizard = () => {
     setIsSubmitted(false);
@@ -105,9 +148,8 @@ export default function ProjectSubmissionWizard() {
     setSelectedService(null);
     setProjectVision("");
     setUploadedInspirationFiles([]);
+    setSubmissionError("");
     setProjectDetails({
-      clientName: "",
-      clientEmail: "",
       budgetRange: "",
       projectDeadline: "",
       additionalNotes: "",
@@ -417,28 +459,6 @@ export default function ProjectSubmissionWizard() {
                       Your project details
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { field: "clientName", label: "Full Name", placeholder: "Your name", type: "text" },
-                        { field: "clientEmail", label: "Email Address", placeholder: "your@email.com", type: "email" },
-                      ].map(({ field, label, placeholder, type }) => (
-                        <div key={field}>
-                          <label
-                            htmlFor={`field-${field}`}
-                            className="text-xs font-semibold text-text-muted uppercase tracking-wider block mb-2"
-                          >
-                            {label}
-                          </label>
-                          <input
-                            id={`field-${field}`}
-                            type={type}
-                            placeholder={placeholder}
-                            value={projectDetails[field]}
-                            onChange={(e) => updateProjectDetail(field, e.target.value)}
-                            className="w-full bg-surface-subtle border border-surface-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-aku-green/50 transition-colors"
-                          />
-                        </div>
-                      ))}
-
                       <div>
                         <label
                           htmlFor="field-budget"
@@ -527,8 +547,6 @@ export default function ProjectSubmissionWizard() {
                               ? `${uploadedInspirationFiles.length} file(s) attached`
                               : "No files uploaded",
                         },
-                        { term: "Name", definition: projectDetails.clientName },
-                        { term: "Email", definition: projectDetails.clientEmail },
                         { term: "Budget", definition: projectDetails.budgetRange },
                         {
                           term: "Deadline",
@@ -548,6 +566,25 @@ export default function ProjectSubmissionWizard() {
                         </div>
                       ))}
                     </dl>
+                    {!currentUser && (
+                      <div className="mt-5 bg-aku-green/5 border border-aku-green/20 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+                        <p className="text-sm text-text-secondary">
+                          Sign in to submit your brief.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openAuthModal({ redirectOnSuccess: false })}
+                          className="text-sm font-semibold text-white bg-aku-primary px-5 py-2.5 rounded-full hover:shadow-glow-green-sm transition-all duration-300"
+                        >
+                          Sign In
+                        </button>
+                      </div>
+                    )}
+                    {submissionError && (
+                      <p className="text-red-500 text-sm mt-4" role="alert">
+                        {submissionError}
+                      </p>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -577,10 +614,11 @@ export default function ProjectSubmissionWizard() {
                 ) : (
                   <button
                     onClick={handleFinalSubmission}
-                    className="flex items-center gap-2 bg-aku-primary text-white font-semibold px-7 py-3 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95 text-sm"
+                    disabled={isSubmitting || !currentUser}
+                    className="flex items-center gap-2 bg-aku-primary text-white font-semibold px-7 py-3 rounded-full hover:shadow-glow-green disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 active:scale-95 text-sm"
                     aria-label="Submit your project brief"
                   >
-                    Submit Brief
+                    {isSubmitting ? "Submitting…" : "Submit Brief"}
                     <Check size={16} aria-hidden="true" />
                   </button>
                 )}

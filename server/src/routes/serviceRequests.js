@@ -2,6 +2,7 @@ const express = require("express");
 const { body, param, query } = require("express-validator");
 const upload = require("../middleware/fileUpload");
 const validateRequest = require("../middleware/validateRequest");
+const { requireAuth, requireRole } = require("../middleware/auth");
 const {
   createServiceRequest,
   getRequestsByUser,
@@ -9,6 +10,8 @@ const {
   getAllRequests,
   updateRequestStatus,
   addInternalNote,
+  uploadDeliverables,
+  downloadAttachment,
   getDashboardSummary,
 } = require("../controllers/serviceRequestController");
 
@@ -23,11 +26,12 @@ const ALLOWED_STATUSES = [
 ];
 
 // Dashboard summary — staff only
-router.get("/dashboard/summary", getDashboardSummary);
+router.get("/dashboard/summary", requireRole("staff", "admin"), getDashboardSummary);
 
 // All requests with optional filters — staff only
 router.get(
   "/",
+  requireRole("staff", "admin"),
   [
     query("status").optional().isIn(ALLOWED_STATUSES),
     query("serviceType").optional().trim(),
@@ -40,6 +44,7 @@ router.get(
 // Single request by ID — client and staff
 router.get(
   "/:id",
+  requireAuth,
   [param("id").isInt().withMessage("Invalid request ID.")],
   validateRequest,
   getRequestById
@@ -48,17 +53,18 @@ router.get(
 // All requests for a specific user — client
 router.get(
   "/user/:userId",
+  requireAuth,
   [param("userId").isInt().withMessage("Invalid user ID.")],
   validateRequest,
   getRequestsByUser
 );
 
-// Submit a new service request — client
+// Submit a new service request — any signed-in user
 router.post(
   "/",
+  requireAuth,
   upload.array("attachments", 10),
   [
-    body("userId").isInt().withMessage("A valid user ID is required."),
     body("serviceType").trim().notEmpty().withMessage("Service type is required."),
     body("projectVision")
       .trim()
@@ -76,6 +82,7 @@ router.post(
 // Update request status — staff only
 router.patch(
   "/:id/status",
+  requireRole("staff", "admin"),
   [
     param("id").isInt().withMessage("Invalid request ID."),
     body("newStatus")
@@ -90,12 +97,38 @@ router.patch(
 // Add internal note — staff only
 router.post(
   "/:id/notes",
+  requireRole("staff", "admin"),
   [
     param("id").isInt().withMessage("Invalid request ID."),
     body("noteText").trim().notEmpty().withMessage("Note text cannot be empty."),
   ],
   validateRequest,
   addInternalNote
+);
+
+// Upload final deliverables + mark completed — staff only
+router.post(
+  "/:id/deliverables",
+  requireRole("staff", "admin"),
+  upload.array("deliverables", 10),
+  [
+    param("id").isInt().withMessage("Invalid request ID."),
+    body("staffNote").optional().trim(),
+  ],
+  validateRequest,
+  uploadDeliverables
+);
+
+// Download an attachment under its original filename — client (own request) and staff
+router.get(
+  "/:id/attachments/:attachmentId/download",
+  requireAuth,
+  [
+    param("id").isInt().withMessage("Invalid request ID."),
+    param("attachmentId").isInt().withMessage("Invalid attachment ID."),
+  ],
+  validateRequest,
+  downloadAttachment
 );
 
 module.exports = router;

@@ -72,7 +72,7 @@ export default function Hero() {
     <section
       id="hero"
       aria-label="Hero"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 bg-white"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-header bg-white"
     >
       {/* ── Atmospheric background — three soft blobs, not scattered ── */}
       <div className="hero-blob-1" aria-hidden="true" />

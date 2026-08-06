@@ -174,6 +174,19 @@ IF NOT EXISTS (SELECT 1 FROM service_categories WHERE slug = 'professional-video
   INSERT INTO service_categories (name, slug, description, display_order)
   VALUES ('Professional Videography & Photography', 'professional-videography-photography',
           'Event coverage, portraits, interviews and brand shoots', 6);
+
+-- Categories offered by the public project-brief wizard
+IF NOT EXISTS (SELECT 1 FROM service_categories WHERE slug = 'videography')
+  INSERT INTO service_categories (name, slug, description, display_order)
+  VALUES ('Videography', 'videography', 'Video production booked via the project brief wizard', 7);
+
+IF NOT EXISTS (SELECT 1 FROM service_categories WHERE slug = 'photography')
+  INSERT INTO service_categories (name, slug, description, display_order)
+  VALUES ('Photography', 'photography', 'Photography booked via the project brief wizard', 8);
+
+IF NOT EXISTS (SELECT 1 FROM service_categories WHERE slug = 'audio-editing')
+  INSERT INTO service_categories (name, slug, description, display_order)
+  VALUES ('Audio Editing', 'audio-editing', 'Audio editing booked via the project brief wizard', 9);
 GO
 
 
@@ -367,4 +380,38 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_notifications_recipie
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_notifications_read' AND object_id = OBJECT_ID('notifications'))
   CREATE INDEX idx_notifications_read ON notifications(is_read);
+GO
+
+
+-- ─── AUTH: PASSWORD SUPPORT ───────────────────────────────────────────────────
+IF COL_LENGTH('users', 'password_hash') IS NULL
+  ALTER TABLE users ADD password_hash NVARCHAR(255) NULL;
+GO
+
+
+-- ─── ATTACHMENTS: DELIVERABLE DISTINCTION ─────────────────────────────────────
+IF COL_LENGTH('request_attachments', 'is_deliverable') IS NULL
+  ALTER TABLE request_attachments ADD is_deliverable BIT NOT NULL DEFAULT 0;
+GO
+
+IF COL_LENGTH('request_attachments', 'uploaded_by') IS NULL
+  ALTER TABLE request_attachments ADD uploaded_by INT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_attachment_uploaded_by')
+  ALTER TABLE request_attachments
+    ADD CONSTRAINT fk_attachment_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id);
+GO
+
+
+-- ─── SEED: STAFF ACCOUNTS ──────────────────────────────────────────────────────
+-- Password for both accounts: 12345678
+-- Hash precomputed via: node -e "console.log(require('bcryptjs').hashSync('12345678', 10))"
+IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'staff1@gsmc.studio')
+  INSERT INTO users (email, contact_number, role_id, password_hash)
+  VALUES ('staff1@gsmc.studio', '+000000000000', 2, '$2b$10$/WKMCj987eXtLZMl3/iO1el/uoInHerdxxkwtlV2gC0xXLNrWr6iK');
+
+IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'staff2@gsmc.studio')
+  INSERT INTO users (email, contact_number, role_id, password_hash)
+  VALUES ('staff2@gsmc.studio', '+000000000000', 2, '$2b$10$/WKMCj987eXtLZMl3/iO1el/uoInHerdxxkwtlV2gC0xXLNrWr6iK');
 GO

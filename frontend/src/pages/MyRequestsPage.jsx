@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useCurrentUser } from "../context/UserContext";
 import StatusProgressBar from "../components/StatusProgressBar";
+import AttachmentList from "../components/AttachmentList";
+import { apiFetch } from "../utils/api";
 
 const STATUS_LABELS = {
   pending: "Pending",
@@ -27,13 +29,9 @@ export default function MyRequestsPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (!currentUser) return;
-
     async function fetchUserRequests() {
       try {
-        const response = await fetch(
-          `http://localhost:4000/api/service-requests/user/${currentUser.userId}`
-        );
+        const response = await apiFetch(`/api/service-requests/user/${currentUser.userId}`);
         const data = await response.json();
         if (data.success) {
           setRequests(data.data);
@@ -52,29 +50,12 @@ export default function MyRequestsPage() {
 
   async function openRequestDetail(requestId) {
     try {
-      const response = await fetch(
-        `http://localhost:4000/api/service-requests/${requestId}`
-      );
+      const response = await apiFetch(`/api/service-requests/${requestId}`);
       const data = await response.json();
       if (data.success) setSelectedRequest(data.data);
     } catch {
       setErrorMessage("Could not load request details.");
     }
-  }
-
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6 pt-32">
-        <div className="text-center">
-          <h1 className="font-display font-extrabold text-3xl text-text-primary mb-3">
-            Sign In Required
-          </h1>
-          <p className="text-text-muted text-base">
-            Please sign in to view your submitted requests.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   if (selectedRequest) {
@@ -87,7 +68,7 @@ export default function MyRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pt-32 pb-16 px-6">
+    <div className="min-h-screen bg-white pt-header pb-16 px-6">
       <div className="max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -197,8 +178,11 @@ function RequestDetailView({ request, onBack }) {
       day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
 
+  const uploadedFiles = (request.attachments || []).filter((f) => !f.is_deliverable);
+  const deliverables = (request.attachments || []).filter((f) => f.is_deliverable);
+
   return (
-    <div className="min-h-screen bg-white pt-32 pb-16 px-6">
+    <div className="min-h-screen bg-white pt-header pb-16 px-6">
       <div className="max-w-3xl mx-auto">
         <button
           onClick={onBack}
@@ -226,31 +210,21 @@ function RequestDetailView({ request, onBack }) {
             </p>
           </div>
 
-          {/* Attachments */}
-          {request.attachments && request.attachments.length > 0 && (
-            <div className="bg-surface-subtle border border-surface-border rounded-2xl p-6">
-              <h3 className="font-semibold text-text-primary mb-4 text-sm uppercase tracking-wider">
-                Uploaded Files
-              </h3>
-              <ul className="space-y-2">
-                {request.attachments.map((file) => (
-                  <li key={file.id}>
-                    <a
-                      href={`http://localhost:4000/uploads/${file.file_path}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm text-aku-green hover:text-aku-greenDark transition-colors font-medium"
-                    >
-                      {file.file_name}
-                      <span className="text-text-muted font-normal text-xs">
-                        ({(file.file_size_bytes / 1024).toFixed(0)} KB)
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Deliverables from AKU Creative Services */}
+          <AttachmentList
+            attachments={deliverables}
+            requestId={request.id}
+            title="Deliverables from AKU Creative Services"
+            emptyStateText="Your completed work will appear here once it's ready."
+          />
+
+          {/* Attachments you uploaded */}
+          <AttachmentList
+            attachments={uploadedFiles}
+            requestId={request.id}
+            title="Your Uploaded Files"
+            emptyStateText="You didn't attach any files to this request."
+          />
 
           {/* Status history */}
           {request.statusHistory && request.statusHistory.length > 0 && (

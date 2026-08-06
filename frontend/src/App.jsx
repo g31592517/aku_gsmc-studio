@@ -11,6 +11,8 @@ import PortfolioShowcaseSection from "./components/Portfolio";
 import CompetitiveAdvantagesSection from "./components/WhyUs";
 import ConversionCallToAction from "./components/CTA";
 import SiteFooter from "./components/Footer";
+import AuthModal from "./components/AuthModal";
+import ProtectedRoute from "./components/ProtectedRoute";
 import MyRequestsPage from "./pages/MyRequestsPage";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
 
@@ -34,11 +36,26 @@ export default function App() {
     <BrowserRouter>
       <div className="bg-white min-h-screen font-body">
         <Navbar />
+        <AuthModal />
         <main id="main-content">
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/my-requests" element={<MyRequestsPage />} />
-            <Route path="/staff/dashboard" element={<StaffDashboardPage />} />
+            <Route
+              path="/my-requests"
+              element={
+                <ProtectedRoute>
+                  <MyRequestsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["staff", "admin"]}>
+                  <StaffDashboardPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
         <SiteFooter />

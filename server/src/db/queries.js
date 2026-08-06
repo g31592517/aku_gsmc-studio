@@ -9,36 +9,43 @@ async function createRequest() {
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
-async function upsertUser(email, contactNumber) {
-  const request = await createRequest();
-
-  // MERGE is the SQL Server equivalent of INSERT ... ON DUPLICATE KEY UPDATE
-  await request
-    .input("email", sql.NVarChar(150), email)
-    .input("contactNumber", sql.NVarChar(30), contactNumber)
-    .query(`
-      MERGE users AS target
-      USING (SELECT @email AS email, @contactNumber AS contact_number) AS source
-        ON target.email = source.email
-      WHEN MATCHED THEN
-        UPDATE SET
-          contact_number = source.contact_number,
-          updated_at     = SYSUTCDATETIME()
-      WHEN NOT MATCHED THEN
-        INSERT (email, contact_number)
-        VALUES (source.email, source.contact_number);
-    `);
-
+async function findUserByEmail(email) {
   const result = await (await createRequest())
     .input("email", sql.NVarChar(150), email)
     .query(`
-      SELECT u.id, u.email, u.contact_number, u.is_active, r.name AS role
+      SELECT u.id, u.email, u.contact_number, u.password_hash,
+             u.role_id, u.is_active, r.name AS role
       FROM   users u
       JOIN   user_roles r ON r.id = u.role_id
       WHERE  u.email = @email
     `);
 
-  return result.recordset[0];
+  return result.recordset[0] || null;
+}
+
+async function insertUserWithPassword({ email, contactNumber, passwordHash, roleId = 1 }) {
+  await (await createRequest())
+    .input("email", sql.NVarChar(150), email)
+    .input("contactNumber", sql.NVarChar(30), contactNumber)
+    .input("passwordHash", sql.NVarChar(255), passwordHash)
+    .input("roleId", sql.TinyInt, roleId)
+    .query(`
+      INSERT INTO users (email, contact_number, password_hash, role_id)
+      VALUES (@email, @contactNumber, @passwordHash, @roleId)
+    `);
+
+  return findUserByEmail(email);
+}
+
+async function setUserPassword(userId, passwordHash) {
+  await (await createRequest())
+    .input("id", sql.Int, userId)
+    .input("passwordHash", sql.NVarChar(255), passwordHash)
+    .query(`
+      UPDATE users
+      SET    password_hash = @passwordHash, updated_at = SYSUTCDATETIME()
+      WHERE  id = @id
+    `);
 }
 
 // ─── LOOKUPS ──────────────────────────────────────────────────────────────────
@@ -130,6 +137,7 @@ async function insertStatusHistoryEntry(transaction, {
 
 async function insertAttachment(transaction, {
   requestId, fileName, filePath, mimeType, fileSizeBytes,
+  isDeliverable = false, uploadedBy = null,
 }) {
   await transaction.request()
     .input("requestId",      sql.Int,          requestId)
@@ -137,11 +145,13 @@ async function insertAttachment(transaction, {
     .input("filePath",       sql.NVarChar(500), filePath)
     .input("mimeType",       sql.NVarChar(100), mimeType)
     .input("fileSizeBytes",  sql.Int,           fileSizeBytes)
+    .input("isDeliverable",  sql.Bit,           isDeliverable)
+    .input("uploadedBy",     sql.Int,           uploadedBy)
     .query(`
       INSERT INTO request_attachments
-        (request_id, file_name, file_path, mime_type, file_size_bytes)
+        (request_id, file_name, file_path, mime_type, file_size_bytes, is_deliverable, uploaded_by)
       VALUES
-        (@requestId, @fileName, @filePath, @mimeType, @fileSizeBytes)
+        (@requestId, @fileName, @filePath, @mimeType, @fileSizeBytes, @isDeliverable, @uploadedBy)
     `);
 }
 
@@ -174,6 +184,7 @@ async function findRequestById(requestId) {
     .query(`
       SELECT
         sr.id,
+        sr.user_id     AS owner_user_id,
         sr.project_vision,
         sr.budget_range,
         sr.project_deadline,
@@ -243,12 +254,26 @@ async function findAttachmentsByRequest(requestId) {
   const result = await (await createRequest())
     .input("requestId", sql.Int, requestId)
     .query(`
-      SELECT id, file_name, mime_type, file_size_bytes, uploaded_at
+      SELECT id, file_name, mime_type, file_size_bytes, is_deliverable, uploaded_at
       FROM   request_attachments
       WHERE  request_id = @requestId
     `);
 
   return result.recordset;
+}
+
+async function findAttachmentById(attachmentId) {
+  const result = await (await createRequest())
+    .input("id", sql.Int, attachmentId)
+    .query(`
+      SELECT ra.id, ra.request_id, ra.file_name, ra.file_path, ra.mime_type,
+             sr.user_id AS request_owner_id
+      FROM   request_attachments ra
+      JOIN   service_requests    sr ON sr.id = ra.request_id
+      WHERE  ra.id = @id
+    `);
+
+  return result.recordset[0] || null;
 }
 
 async function findStatusHistoryByRequest(requestId) {
@@ -370,7 +395,9 @@ async function findUserById(userId) {
 }
 
 module.exports = {
-  upsertUser,
+  findUserByEmail,
+  insertUserWithPassword,
+  setUserPassword,
   findStatusByName,
   findCategoryByName,
   getAllStatuses,
@@ -382,6 +409,7 @@ module.exports = {
   findRequestById,
   findAllRequests,
   findAttachmentsByRequest,
+  findAttachmentById,
   findStatusHistoryByRequest,
   findInternalNotesByRequest,
   findCurrentRequestStatus,

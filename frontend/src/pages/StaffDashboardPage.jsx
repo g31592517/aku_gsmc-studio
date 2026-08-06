@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import StatusProgressBar from "../components/StatusProgressBar";
+import AttachmentList from "../components/AttachmentList";
+import DeliverablesUploadCard from "../components/DeliverablesUploadCard";
+import { apiFetch } from "../utils/api";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
@@ -36,7 +39,7 @@ export default function StaffDashboardPage() {
 
   async function fetchSummary() {
     try {
-      const res = await fetch("http://localhost:4000/api/service-requests/dashboard/summary");
+      const res = await apiFetch("/api/service-requests/dashboard/summary");
       const data = await res.json();
       if (data.success) setSummary(data.data);
     } catch {
@@ -52,9 +55,7 @@ export default function StaffDashboardPage() {
       if (filters.serviceType) params.append("serviceType", filters.serviceType);
       if (filters.clientEmail) params.append("clientEmail", filters.clientEmail);
 
-      const res = await fetch(
-        `http://localhost:4000/api/service-requests?${params.toString()}`
-      );
+      const res = await apiFetch(`/api/service-requests?${params.toString()}`);
       const data = await res.json();
       if (data.success) setRequests(data.data);
     } catch {
@@ -74,9 +75,7 @@ export default function StaffDashboardPage() {
 
   async function openRequestDetail(requestId) {
     try {
-      const res = await fetch(
-        `http://localhost:4000/api/service-requests/${requestId}?includeNotes=true`
-      );
+      const res = await apiFetch(`/api/service-requests/${requestId}?includeNotes=true`);
       const data = await res.json();
       if (data.success) setSelectedRequest(data.data);
     } catch {
@@ -95,7 +94,7 @@ export default function StaffDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-subtle pt-32 pb-16 px-6">
+    <div className="min-h-screen bg-surface-subtle pt-header pb-16 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
@@ -216,27 +215,27 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  const clientAssets = (request.attachments || []).filter((f) => !f.is_deliverable);
+  const deliverables = (request.attachments || []).filter((f) => f.is_deliverable);
+
+  async function refreshRequest() {
+    const refreshed = await apiFetch(`/api/service-requests/${request.id}?includeNotes=true`);
+    const refreshedData = await refreshed.json();
+    if (refreshedData.success) onRequestUpdated(refreshedData.data);
+  }
+
   async function handleStatusUpdate() {
     setIsSavingStatus(true);
     try {
-      const res = await fetch(
-        `http://localhost:4000/api/service-requests/${request.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newStatus, staffNote }),
-        }
-      );
+      const res = await apiFetch(`/api/service-requests/${request.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ newStatus, staffNote }),
+      });
       const data = await res.json();
       if (data.success) {
         setSuccessMessage("Status updated successfully.");
         setStaffNote("");
-        // Refresh the detail view
-        const refreshed = await fetch(
-          `http://localhost:4000/api/service-requests/${request.id}?includeNotes=true`
-        );
-        const refreshedData = await refreshed.json();
-        if (refreshedData.success) onRequestUpdated(refreshedData.data);
+        await refreshRequest();
       }
     } catch {
       setSuccessMessage("Could not update status. Please try again.");
@@ -249,20 +248,12 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
     if (!newNoteText.trim()) return;
     setIsSavingNote(true);
     try {
-      await fetch(
-        `http://localhost:4000/api/service-requests/${request.id}/notes`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ noteText: newNoteText }),
-        }
-      );
+      await apiFetch(`/api/service-requests/${request.id}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ noteText: newNoteText }),
+      });
       setNewNoteText("");
-      const refreshed = await fetch(
-        `http://localhost:4000/api/service-requests/${request.id}?includeNotes=true`
-      );
-      const refreshedData = await refreshed.json();
-      if (refreshedData.success) onRequestUpdated(refreshedData.data);
+      await refreshRequest();
     } catch {
       console.error("Could not save note.");
     } finally {
@@ -270,9 +261,14 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
     }
   }
 
+  async function handleDeliverablesUploaded(updatedRequest) {
+    setNewStatus(updatedRequest.status);
+    onRequestUpdated(updatedRequest);
+  }
+
   return (
-    <div className="min-h-screen bg-surface-subtle pt-32 pb-16 px-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-surface-subtle pt-header pb-16 px-6">
+      <div className="max-w-6xl mx-auto">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-sm text-text-muted hover:text-aku-green transition-colors mb-8 font-medium"
@@ -280,10 +276,10 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
           ← Back to Dashboard
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
           {/* Left column — request details */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-3 space-y-5">
 
             {/* Client info */}
             <div className="bg-white border border-surface-border rounded-2xl p-6">
@@ -318,30 +314,20 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
             </div>
 
             {/* Attachments */}
-            {request.attachments && request.attachments.length > 0 && (
-              <div className="bg-white border border-surface-border rounded-2xl p-6">
-                <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-4">
-                  Attachments ({request.attachments.length})
-                </h3>
-                <ul className="space-y-2">
-                  {request.attachments.map((file) => (
-                    <li key={file.id}>
-                      <a
-                        href={`http://localhost:4000/uploads/${file.file_path}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 text-sm text-aku-green hover:text-aku-greenDark transition-colors font-medium"
-                      >
-                        {file.file_name}
-                        <span className="text-text-muted font-normal text-xs">
-                          {file.mime_type} · {(file.file_size_bytes / 1024).toFixed(0)} KB
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <AttachmentList
+              attachments={clientAssets}
+              requestId={request.id}
+              title="Client Assets"
+              emptyStateText="No files uploaded by the client."
+              showMimeType
+            />
+            <AttachmentList
+              attachments={deliverables}
+              requestId={request.id}
+              title="Delivered Files"
+              emptyStateText="Nothing delivered yet."
+              showMimeType
+            />
 
             {/* Internal notes — staff only */}
             <div className="bg-white border border-surface-border rounded-2xl p-6">
@@ -379,14 +365,14 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
             </div>
           </div>
 
-          {/* Right column — status management */}
-          <div className="space-y-5">
+          {/* Right column — status management + delivery */}
+          <div className="lg:col-span-2 space-y-5">
             <div className="bg-white border border-surface-border rounded-2xl p-6">
               <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-4">
                 Update Status
               </h3>
               <StatusProgressBar currentStatus={request.status} />
-              <div className="mt-6 space-y-3">
+              <div className="mt-8 space-y-4">
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
@@ -416,6 +402,12 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
                 )}
               </div>
             </div>
+
+            <DeliverablesUploadCard
+              requestId={request.id}
+              currentStatus={request.status}
+              onUploaded={handleDeliverablesUploaded}
+            />
           </div>
         </div>
       </div>

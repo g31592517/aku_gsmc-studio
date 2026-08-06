@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import akuLogo from "../assets/logo.jpeg";
-import AuthModal from "./AuthModal";
 import { useCurrentUser } from "../context/UserContext";
 
 const navigationLinks = [
@@ -13,11 +13,16 @@ const navigationLinks = [
   { label: "Contact", href: "#contact" },
 ];
 
+function dashboardDestination(role) {
+  return role === "staff" || role === "admin"
+    ? { href: "/staff/dashboard", label: "Dashboard" }
+    : { href: "/my-requests", label: "My Requests" };
+}
+
 export default function Navbar() {
-  const { currentUser, signOut } = useCurrentUser();
+  const { currentUser, signOut, openAuthModal } = useCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hideNav, setHideNav] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -40,6 +45,8 @@ export default function Navbar() {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isMobileMenuOpen]);
+
+  const dashboard = currentUser ? dashboardDestination(currentUser.role) : null;
 
   return (
     <>
@@ -90,12 +97,20 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {currentUser ? (
               <>
-                <a
-                  href="/my-requests"
+                <div className="flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full bg-surface-subtle">
+                  <span className="w-7 h-7 rounded-full bg-aku-primary flex items-center justify-center flex-shrink-0">
+                    <User size={14} className="text-white" aria-hidden="true" />
+                  </span>
+                  <span className="text-xs font-medium text-text-secondary truncate max-w-[140px]">
+                    {currentUser.email}
+                  </span>
+                </div>
+                <Link
+                  to={dashboard.href}
                   className="text-sm font-medium text-text-secondary hover:text-aku-green transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
                 >
-                  My Requests
-                </a>
+                  {dashboard.label}
+                </Link>
                 <button
                   onClick={signOut}
                   className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
@@ -106,7 +121,7 @@ export default function Navbar() {
             ) : (
               <>
                 <button
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => openAuthModal()}
                   className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
                 >
                   Sign In
@@ -138,7 +153,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-white flex flex-col pt-24 px-8 gap-5 md:hidden"
+            className="fixed inset-0 z-40 bg-white flex flex-col pt-24 px-8 gap-5 md:hidden overflow-y-auto"
             role="dialog"
             aria-modal="true"
           >
@@ -153,6 +168,22 @@ export default function Navbar() {
                 GSMC <span className="text-aku-green">STUDIO</span>
               </span>
             </div>
+
+            {currentUser && (
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3 pb-4 border-b border-surface-border"
+              >
+                <span className="w-9 h-9 rounded-full bg-aku-primary flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-white" aria-hidden="true" />
+                </span>
+                <span className="text-sm font-medium text-text-secondary truncate">
+                  {currentUser.email}
+                </span>
+              </motion.div>
+            )}
+
             {navigationLinks.map(({ label, href }, index) => (
               <motion.a
                 key={label}
@@ -166,23 +197,43 @@ export default function Navbar() {
                 {label}
               </motion.a>
             ))}
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="mt-4 text-base font-semibold bg-aku-primary text-white px-7 py-4 rounded-full w-fit"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Start Your Project →
-            </motion.button>
+
+            {currentUser ? (
+              <>
+                <Link
+                  to={dashboard.href}
+                  className="text-2xl font-display font-semibold text-text-primary hover:text-aku-green transition-colors border-b border-surface-border pb-4"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {dashboard.label}
+                </Link>
+                <button
+                  onClick={() => {
+                    signOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="mt-4 text-base font-semibold border border-surface-border text-text-secondary px-7 py-4 rounded-full w-fit"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-4 text-base font-semibold bg-aku-primary text-white px-7 py-4 rounded-full w-fit"
+                onClick={() => {
+                  openAuthModal();
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Sign In
+              </motion.button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
     </>
   );
 }

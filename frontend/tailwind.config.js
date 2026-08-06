@@ -88,6 +88,11 @@ export default {
         "hero-lg": ["clamp(2rem, 4.5vw, 3.5rem)", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
         "section-title": ["clamp(1.75rem, 3vw, 2.75rem)", { lineHeight: "1.15", letterSpacing: "-0.02em" }],
       },
+      spacing: {
+        // Matches the fixed Navbar's real rendered height (~141px), so every
+        // page can offset itself below it with one shared value.
+        header: "9rem",
+      },
     },
   },
   plugins: [],

@@ -9,6 +9,11 @@ export function UserProvider({ children }) {
     return stored ? JSON.parse(stored) : null;
   });
 
+  const [authModalState, setAuthModalState] = useState({
+    isOpen: false,
+    redirectOnSuccess: true,
+  });
+
   function signIn(userData) {
     setCurrentUser(userData);
     localStorage.setItem("aku_user", JSON.stringify(userData));
@@ -19,8 +24,21 @@ export function UserProvider({ children }) {
     localStorage.removeItem("aku_user");
   }
 
+  function openAuthModal(options = {}) {
+    setAuthModalState({
+      isOpen: true,
+      redirectOnSuccess: options.redirectOnSuccess !== false,
+    });
+  }
+
+  function closeAuthModal() {
+    setAuthModalState((prev) => ({ ...prev, isOpen: false }));
+  }
+
   return (
-    <UserContext.Provider value={{ currentUser, signIn, signOut }}>
+    <UserContext.Provider
+      value={{ currentUser, signIn, signOut, authModalState, openAuthModal, closeAuthModal }}
+    >
       {children}
     </UserContext.Provider>
   );

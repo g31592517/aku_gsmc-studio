@@ -1,9 +1,11 @@
+const path = require("path");
 const { sql, getPool } = require("../config/database");
 const queries = require("../db/queries");
 const {
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
   sendStatusUpdateEmail,
+  sendDeliverablesReadyEmail,
 } = require("../services/emailService");
 
 async function createServiceRequest(req, res, next) {
@@ -11,8 +13,9 @@ async function createServiceRequest(req, res, next) {
   const transaction = new sql.Transaction(pool);
 
   try {
+    const userId = req.user.userId;
     const {
-      userId, serviceType, projectVision,
+      serviceType, projectVision,
       budgetRange, projectDeadline, additionalNotes,
     } = req.body;
 
@@ -84,7 +87,11 @@ async function createServiceRequest(req, res, next) {
 
 async function getRequestsByUser(req, res, next) {
   try {
-    const rows = await queries.findRequestsByUser(Number(req.params.userId));
+    const userId = Number(req.params.userId);
+    if (req.user.role === "client" && Number(req.user.userId) !== userId) {
+      return res.status(403).json({ success: false, message: "You do not have permission to view these requests." });
+    }
+    const rows = await queries.findRequestsByUser(userId);
     res.json({ success: true, data: rows });
   } catch (error) {
     next(error);
@@ -99,6 +106,10 @@ async function getRequestById(req, res, next) {
     const request = await queries.findRequestById(Number(id));
     if (!request) {
       return res.status(404).json({ success: false, message: "Request not found." });
+    }
+
+    if (req.user.role === "client" && Number(request.owner_user_id) !== Number(req.user.userId)) {
+      return res.status(403).json({ success: false, message: "You do not have permission to view this request." });
     }
 
     const [attachments, statusHistory] = await Promise.all([
@@ -154,7 +165,7 @@ async function updateRequestStatus(req, res, next) {
       requestId: Number(id),
       fromStatusId: current.status_id,
       toStatusId: toStatus.id,
-      changedBy: null,
+      changedBy: req.user.userId,
       note: staffNote || null,
     });
 
@@ -185,9 +196,105 @@ async function addInternalNote(req, res, next) {
     const note = await queries.insertInternalNote(
       Number(req.params.id),
       req.body.noteText.trim(),
-      null
+      req.user.userId
     );
     res.status(201).json({ success: true, data: note });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function uploadDeliverables(req, res, next) {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    const requestId = Number(req.params.id);
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one deliverable file is required." });
+    }
+
+    await transaction.begin();
+
+    const current = await queries.findCurrentRequestStatus(transaction, requestId);
+    if (!current) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: "Request not found." });
+    }
+
+    for (const file of req.files) {
+      await queries.insertAttachment(transaction, {
+        requestId,
+        fileName: file.originalname,
+        filePath: file.filename,
+        mimeType: file.mimetype,
+        fileSizeBytes: file.size,
+        isDeliverable: true,
+        uploadedBy: req.user.userId,
+      });
+    }
+
+    let newStatusName = current.status_name;
+    if (current.status_name !== "completed") {
+      const completedStatus = await queries.findStatusByName("completed");
+      await queries.updateRequestStatusInDb(transaction, requestId, completedStatus.id);
+      await queries.insertStatusHistoryEntry(transaction, {
+        requestId,
+        fromStatusId: current.status_id,
+        toStatusId: completedStatus.id,
+        changedBy: req.user.userId,
+        note: req.body.staffNote || "Final deliverables uploaded",
+      });
+      newStatusName = "completed";
+    }
+
+    await transaction.commit();
+
+    const user = await queries.findUserById(current.user_id);
+    if (user) {
+      sendDeliverablesReadyEmail({
+        requesterEmail: user.email,
+        requestId,
+        deliverableFilenames: req.files.map((f) => f.originalname),
+      }).catch((err) => console.error("Deliverables ready email failed:", err));
+    }
+
+    const [attachments, statusHistory] = await Promise.all([
+      queries.findAttachmentsByRequest(requestId),
+      queries.findStatusHistoryByRequest(requestId),
+    ]);
+    const request = await queries.findRequestById(requestId);
+
+    res.status(201).json({
+      success: true,
+      message: "Deliverables uploaded and request marked completed.",
+      data: { ...request, attachments, statusHistory, status: newStatusName },
+    });
+  } catch (error) {
+    await transaction.rollback();
+    next(error);
+  }
+}
+
+async function downloadAttachment(req, res, next) {
+  try {
+    const requestId = Number(req.params.id);
+    const attachmentId = Number(req.params.attachmentId);
+
+    const attachment = await queries.findAttachmentById(attachmentId);
+    if (!attachment || Number(attachment.request_id) !== requestId) {
+      return res.status(404).json({ success: false, message: "Attachment not found." });
+    }
+
+    if (req.user.role === "client" && Number(attachment.request_owner_id) !== Number(req.user.userId)) {
+      return res.status(403).json({ success: false, message: "You do not have permission to download this file." });
+    }
+
+    const absolutePath = path.join(__dirname, "../uploads", attachment.file_path);
+    res.download(absolutePath, attachment.file_name, (err) => {
+      if (err && !res.headersSent) next(err);
+    });
   } catch (error) {
     next(error);
   }
@@ -225,6 +332,8 @@ module.exports = {
   getAllRequests,
   updateRequestStatus,
   addInternalNote,
+  uploadDeliverables,
+  downloadAttachment,
   getDashboardSummary,
   getServiceCategories,
   getRequestStatuses,

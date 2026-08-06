@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, Phone } from "lucide-react";
+import { X, Mail, Phone, Lock } from "lucide-react";
 import { useCurrentUser } from "../context/UserContext";
+import { apiFetch } from "../utils/api";
 
-const initialFormState = { email: "", contactNumber: "" };
-
-const initialErrorState = { email: "", contactNumber: "" };
+const initialFormState = { email: "", contactNumber: "", password: "", confirmPassword: "" };
+const initialErrorState = { email: "", contactNumber: "", password: "", confirmPassword: "" };
 
 function validateEmail(value) {
   if (!value.trim()) return "Email address is required.";
@@ -19,8 +20,18 @@ function validateContactNumber(value) {
   return "";
 }
 
-export default function AuthModal({ isOpen, onClose }) {
-  const { signIn } = useCurrentUser();
+function validatePassword(value) {
+  if (!value) return "Password is required.";
+  if (value.length < 8) return "Password must be at least 8 characters.";
+  return "";
+}
+
+export default function AuthModal() {
+  const { signIn, authModalState, closeAuthModal } = useCurrentUser();
+  const { isOpen, redirectOnSuccess } = authModalState;
+  const navigate = useNavigate();
+
+  const [mode, setMode] = useState("signIn");
   const [formValues, setFormValues] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState(initialErrorState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,38 +39,46 @@ export default function AuthModal({ isOpen, onClose }) {
   const modalRef = useRef(null);
   const firstInputRef = useRef(null);
 
-  // Lock background scroll
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Focus first input when modal opens
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => firstInputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
-  // Escape key closes modal
   useEffect(() => {
-    const onEscape = (e) => e.key === "Escape" && onClose();
+    const onEscape = (e) => e.key === "Escape" && handleClose();
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleFieldChange(field, value) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: "" }));
   }
 
+  function switchMode(nextMode) {
+    setMode(nextMode);
+    setFormErrors(initialErrorState);
+  }
+
   function validateAll() {
     const errors = {
       email: validateEmail(formValues.email),
-      contactNumber: validateContactNumber(formValues.contactNumber),
+      password: validatePassword(formValues.password),
+      contactNumber: mode === "signUp" ? validateContactNumber(formValues.contactNumber) : "",
+      confirmPassword:
+        mode === "signUp" && formValues.confirmPassword !== formValues.password
+          ? "Passwords do not match."
+          : "",
     };
     setFormErrors(errors);
-    return !errors.email && !errors.contactNumber;
+    return !Object.values(errors).some(Boolean);
   }
 
   async function handleSubmit(e) {
@@ -68,21 +87,25 @@ export default function AuthModal({ isOpen, onClose }) {
 
     setIsSubmitting(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
-      const response = await fetch(`${apiUrl}/api/auth/sign-in`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formValues.email,
-          contactNumber: formValues.contactNumber,
-        }),
-      });
+      const endpoint = mode === "signUp" ? "/api/auth/sign-up" : "/api/auth/sign-in";
+      const body =
+        mode === "signUp"
+          ? {
+              email: formValues.email,
+              contactNumber: formValues.contactNumber,
+              password: formValues.password,
+            }
+          : { email: formValues.email, password: formValues.password };
 
+      const response = await apiFetch(endpoint, { method: "POST", body: JSON.stringify(body) });
       const data = await response.json();
 
       if (data.success) {
         signIn(data.data);
         setIsSuccess(true);
+        if (redirectOnSuccess) {
+          navigate(data.data.role === "client" ? "/my-requests" : "/staff/dashboard");
+        }
       } else {
         setFormErrors((prev) => ({
           ...prev,
@@ -103,7 +126,8 @@ export default function AuthModal({ isOpen, onClose }) {
     setFormValues(initialFormState);
     setFormErrors(initialErrorState);
     setIsSuccess(false);
-    onClose();
+    setMode("signIn");
+    closeAuthModal();
   }
 
   return (
@@ -130,11 +154,10 @@ export default function AuthModal({ isOpen, onClose }) {
             className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
             <button
               onClick={handleClose}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-surface-subtle hover:bg-surface-overlay flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
-              aria-label="Close sign in"
+              aria-label="Close"
             >
               <X size={15} aria-hidden="true" />
             </button>
@@ -161,21 +184,21 @@ export default function AuthModal({ isOpen, onClose }) {
               </div>
             ) : (
               <>
-                {/* Header */}
                 <div className="mb-8">
                   <span className="text-aku-greenLight text-xs font-semibold tracking-widest uppercase">
                     Welcome
                   </span>
                   <h2 className="font-display font-extrabold text-2xl text-text-primary mt-1">
-                    Sign In
+                    {mode === "signUp" ? "Sign Up" : "Sign In"}
                   </h2>
                   <p className="text-text-muted text-sm mt-1">
-                    Enter your details to access AKU Creative Services.
+                    {mode === "signUp"
+                      ? "Create an account to submit and track your project briefs."
+                      : "Enter your details to access AKU Creative Services."}
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} noValidate>
-                  {/* Email field */}
                   <div className="mb-5">
                     <label
                       htmlFor="auth-email"
@@ -211,49 +234,131 @@ export default function AuthModal({ isOpen, onClose }) {
                     )}
                   </div>
 
-                  {/* Contact number field */}
-                  <div className="mb-7">
+                  {mode === "signUp" && (
+                    <div className="mb-5">
+                      <label
+                        htmlFor="auth-contact"
+                        className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+                      >
+                        Contact Number
+                      </label>
+                      <div className="relative">
+                        <Phone
+                          size={15}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                          aria-hidden="true"
+                        />
+                        <input
+                          id="auth-contact"
+                          type="tel"
+                          placeholder="+254 700 000 000"
+                          value={formValues.contactNumber}
+                          onChange={(e) => handleFieldChange("contactNumber", e.target.value)}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm text-text-primary placeholder:text-text-placeholder bg-surface-subtle focus:outline-none focus:border-aku-green/50 transition-colors ${
+                            formErrors.contactNumber ? "border-red-400" : "border-surface-border"
+                          }`}
+                          autoComplete="tel"
+                          aria-describedby={formErrors.contactNumber ? "contact-error" : undefined}
+                          aria-invalid={!!formErrors.contactNumber}
+                        />
+                      </div>
+                      {formErrors.contactNumber && (
+                        <p id="contact-error" className="text-red-500 text-xs mt-1.5" role="alert">
+                          {formErrors.contactNumber}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mb-5">
                     <label
-                      htmlFor="auth-contact"
+                      htmlFor="auth-password"
                       className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
                     >
-                      Contact Number
+                      Password
                     </label>
                     <div className="relative">
-                      <Phone
+                      <Lock
                         size={15}
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
                         aria-hidden="true"
                       />
                       <input
-                        id="auth-contact"
-                        type="tel"
-                        placeholder="+254 700 000 000"
-                        value={formValues.contactNumber}
-                        onChange={(e) => handleFieldChange("contactNumber", e.target.value)}
+                        id="auth-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={formValues.password}
+                        onChange={(e) => handleFieldChange("password", e.target.value)}
                         className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm text-text-primary placeholder:text-text-placeholder bg-surface-subtle focus:outline-none focus:border-aku-green/50 transition-colors ${
-                          formErrors.contactNumber ? "border-red-400" : "border-surface-border"
+                          formErrors.password ? "border-red-400" : "border-surface-border"
                         }`}
-                        autoComplete="tel"
-                        aria-describedby={formErrors.contactNumber ? "contact-error" : undefined}
-                        aria-invalid={!!formErrors.contactNumber}
+                        autoComplete={mode === "signUp" ? "new-password" : "current-password"}
+                        aria-describedby={formErrors.password ? "password-error" : undefined}
+                        aria-invalid={!!formErrors.password}
                       />
                     </div>
-                    {formErrors.contactNumber && (
-                      <p id="contact-error" className="text-red-500 text-xs mt-1.5" role="alert">
-                        {formErrors.contactNumber}
+                    {formErrors.password && (
+                      <p id="password-error" className="text-red-500 text-xs mt-1.5" role="alert">
+                        {formErrors.password}
                       </p>
                     )}
                   </div>
+
+                  {mode === "signUp" && (
+                    <div className="mb-7">
+                      <label
+                        htmlFor="auth-confirm-password"
+                        className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+                      >
+                        Confirm Password
+                      </label>
+                      <div className="relative">
+                        <Lock
+                          size={15}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                          aria-hidden="true"
+                        />
+                        <input
+                          id="auth-confirm-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={formValues.confirmPassword}
+                          onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm text-text-primary placeholder:text-text-placeholder bg-surface-subtle focus:outline-none focus:border-aku-green/50 transition-colors ${
+                            formErrors.confirmPassword ? "border-red-400" : "border-surface-border"
+                          }`}
+                          autoComplete="new-password"
+                          aria-describedby={formErrors.confirmPassword ? "confirm-password-error" : undefined}
+                          aria-invalid={!!formErrors.confirmPassword}
+                        />
+                      </div>
+                      {formErrors.confirmPassword && (
+                        <p id="confirm-password-error" className="text-red-500 text-xs mt-1.5" role="alert">
+                          {formErrors.confirmPassword}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <button
                     type="submit"
                     disabled={isSubmitting}
                     className="w-full py-3.5 rounded-xl bg-aku-primary text-white font-semibold text-sm hover:shadow-glow-green disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                   >
-                    {isSubmitting ? "Signing in\u2026" : "Sign In"}
+                    {isSubmitting ? "Please wait…" : mode === "signUp" ? "Sign Up" : "Sign In"}
                   </button>
                 </form>
+
+                <p className="text-center text-sm text-text-muted mt-6">
+                  {mode === "signUp" ? "Already have an account?" : "New to AKU Creative Services?"}{" "}
+                  <button
+                    type="button"
+                    onClick={() => switchMode(mode === "signUp" ? "signIn" : "signUp")}
+                    className="text-aku-greenLight hover:text-text-primary font-semibold transition-colors"
+                  >
+                    {mode === "signUp" ? "Sign In" : "Sign Up"}
+                  </button>
+                </p>
               </>
             )}
           </motion.div>

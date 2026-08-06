@@ -133,9 +133,38 @@ AKU Graduate School of Media and Communications
   await transporter.sendMail(mailOptions);
 }
 
+async function sendDeliverablesReadyEmail({ requesterEmail, requestId, deliverableFilenames = [] }) {
+  const fileList = deliverableFilenames.length > 0
+    ? deliverableFilenames.map((name) => `• ${name}`).join("\n")
+    : "";
+
+  const mailOptions = {
+    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    to: requesterEmail,
+    subject: `Your project is complete — AKU Creative Services`,
+    text: `
+Hi,
+
+Great news — your service request (ID: ${requestId}) has been completed and the final files are ready.
+
+Delivered Files
+----------------
+${fileList}
+
+Sign in to "My Requests" on AKU Creative Services to download your completed work.
+
+Best regards,
+AKU Graduate School of Media and Communications
+    `.trim(),
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
 module.exports = {
   verifyEmailConnection,
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
   sendStatusUpdateEmail,
+  sendDeliverablesReadyEmail,
 };

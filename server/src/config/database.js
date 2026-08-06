@@ -1,4 +1,3 @@
-const sql = require("mssql");
 require("dotenv").config();
 
 /*
@@ -10,20 +9,26 @@ require("dotenv").config();
   All queries use this pool via the sql object exported below.
 
   Authentication:
-  - If DB_USER is set, SQL Server authentication is used.
-  - If DB_USER is empty, Windows Authentication (trusted connection)
-    is used — the app connects as the Windows user running it.
+  - If DB_USER is set, SQL Server authentication is used (tedious driver).
+  - If DB_USER is empty, Windows Authentication is used via the
+    msnodesqlv8 driver — the plain tedious driver's `trustedConnection`
+    option does NOT perform real Windows Integrated Auth, so a separate
+    native driver is required to connect as the Windows user running the app.
 */
 const useWindowsAuth = !process.env.DB_USER;
+
+const sql = require(useWindowsAuth ? "mssql/msnodesqlv8" : "mssql");
 
 const connectionConfig = {
   server: process.env.DB_HOST,
   port: Number(process.env.DB_PORT) || 1433,
   database: process.env.DB_NAME,
-  ...(!useWindowsAuth && {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  }),
+  ...(useWindowsAuth
+    ? { driver: "ODBC Driver 17 for SQL Server" }
+    : {
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+      }),
   options: {
     // Use Windows Authentication when no SQL login is configured
     trustedConnection: useWindowsAuth,
