@@ -22,11 +22,16 @@ const STATUS_COLOURS = {
 };
 
 export default function MyRequestsPage() {
-  const { currentUser } = useCurrentUser();
+  const { currentUser, markRequestsSeen } = useCurrentUser();
   const [requests, setRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    markRequestsSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     async function fetchUserRequests() {

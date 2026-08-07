@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState } from "react";
 
 const UserContext = createContext(null);
 
+function requestsSeenKey(userId) {
+  return `aku_requests_seen_${userId}`;
+}
+
 export function UserProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     // Persist user across page refreshes
@@ -13,6 +17,10 @@ export function UserProvider({ children }) {
     isOpen: false,
     redirectOnSuccess: true,
   });
+
+  // Bumped whenever markRequestsSeen() runs, so components watching request
+  // activity (e.g. the navbar's unseen-updates badge) know to recompute.
+  const [requestsSeenVersion, setRequestsSeenVersion] = useState(0);
 
   function signIn(userData) {
     setCurrentUser(userData);
@@ -35,9 +43,24 @@ export function UserProvider({ children }) {
     setAuthModalState((prev) => ({ ...prev, isOpen: false }));
   }
 
+  function markRequestsSeen() {
+    if (!currentUser) return;
+    localStorage.setItem(requestsSeenKey(currentUser.userId), new Date().toISOString());
+    setRequestsSeenVersion((v) => v + 1);
+  }
+
   return (
     <UserContext.Provider
-      value={{ currentUser, signIn, signOut, authModalState, openAuthModal, closeAuthModal }}
+      value={{
+        currentUser,
+        signIn,
+        signOut,
+        authModalState,
+        openAuthModal,
+        closeAuthModal,
+        requestsSeenVersion,
+        markRequestsSeen,
+      }}
     >
       {children}
     </UserContext.Provider>

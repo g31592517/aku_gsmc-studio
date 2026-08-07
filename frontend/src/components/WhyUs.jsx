@@ -49,7 +49,8 @@ const competitiveAdvantages = [
 export default function CompetitiveAdvantagesSection() {
   return (
     <section
-      className="py-24 px-6 relative overflow-hidden bg-surface-subtle section-divider"
+      id="about"
+      className="py-24 px-6 relative overflow-hidden bg-surface-subtle section-divider scroll-mt-header"
       aria-labelledby="why-us-heading"
     >
       <div

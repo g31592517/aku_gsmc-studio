@@ -161,7 +161,7 @@ export default function Services() {
   return (
     <section
       id="services"
-      className="py-24 px-6 relative bg-surface-subtle section-divider"
+      className="py-24 px-6 relative bg-surface-subtle section-divider scroll-mt-header"
       aria-labelledby="services-heading"
     >
       <div className="max-w-7xl mx-auto relative z-10">

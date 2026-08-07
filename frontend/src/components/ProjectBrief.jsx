@@ -161,7 +161,7 @@ export default function ProjectSubmissionWizard() {
   return (
     <section
       id="contact"
-      className="py-24 px-6 relative bg-surface-subtle section-divider"
+      className="py-24 px-6 relative bg-surface-subtle section-divider scroll-mt-header"
       aria-labelledby="brief-heading"
     >
       <div

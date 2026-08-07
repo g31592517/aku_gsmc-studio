@@ -104,7 +104,7 @@ export default function AuthModal() {
         signIn(data.data);
         setIsSuccess(true);
         if (redirectOnSuccess) {
-          navigate(data.data.role === "client" ? "/my-requests" : "/staff/dashboard");
+          navigate(data.data.role === "client" ? "/" : "/staff/dashboard");
         }
       } else {
         setFormErrors((prev) => ({

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, User } from "lucide-react";
 import akuLogo from "../assets/logo.jpeg";
 import { useCurrentUser } from "../context/UserContext";
+import { useUnseenRequestUpdates } from "../hooks/useUnseenRequestUpdates";
 
+// hash: null means "go to the top of the home page"
 const navigationLinks = [
-  { label: "Work", href: "#work" },
-  { label: "Services", href: "#services" },
-  { label: "Inspiration", href: "#inspiration" },
-  { label: "About", href: "#about" },
-  { label: "Contact", href: "#contact" },
+  { label: "Home", hash: null },
+  { label: "Services", hash: "#services" },
+  { label: "Inspiration", hash: "#inspiration" },
+  { label: "About", hash: "#about" },
+  { label: "Contact", hash: "#contact" },
 ];
 
 function dashboardDestination(role) {
@@ -20,9 +22,12 @@ function dashboardDestination(role) {
 }
 
 export default function Navbar() {
-  const { currentUser, signOut, openAuthModal } = useCurrentUser();
+  const { currentUser, signOut, openAuthModal, requestsSeenVersion } = useCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hideNav, setHideNav] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const unseenCount = useUnseenRequestUpdates(currentUser, requestsSeenVersion);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -47,6 +52,22 @@ export default function Navbar() {
   }, [isMobileMenuOpen]);
 
   const dashboard = currentUser ? dashboardDestination(currentUser.role) : null;
+  const showBadge = dashboard?.label === "My Requests" && unseenCount > 0;
+
+  // Landing-page sections only exist on "/" — from anywhere else, navigate
+  // home first, then scroll to the section once it's mounted (App.jsx's
+  // LandingPage watches location.hash for this).
+  function goToSection(hash) {
+    if (location.pathname === "/") {
+      if (hash) {
+        document.querySelector(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } else {
+      navigate(hash ? `/${hash}` : "/");
+    }
+  }
 
   return (
     <>
@@ -61,7 +82,8 @@ export default function Navbar() {
 
           {/* Logo + Brand Name */}
           <a
-            href="#"
+            href="/"
+            onClick={(e) => { e.preventDefault(); goToSection(null); }}
             className="flex items-center gap-3"
             aria-label="GSMC STUDIO — Home"
           >
@@ -81,10 +103,11 @@ export default function Navbar() {
             aria-label="Primary navigation"
             className="hidden md:flex items-center gap-8"
           >
-            {navigationLinks.map(({ label, href }) => (
+            {navigationLinks.map(({ label, hash }) => (
               <a
                 key={label}
-                href={href}
+                href={hash || "/"}
+                onClick={(e) => { e.preventDefault(); goToSection(hash); }}
                 className="text-sm font-medium text-text-secondary hover:text-aku-green transition-colors duration-200 relative group"
               >
                 {label}
@@ -107,9 +130,17 @@ export default function Navbar() {
                 </div>
                 <Link
                   to={dashboard.href}
-                  className="text-sm font-medium text-text-secondary hover:text-aku-green transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
+                  className="relative text-sm font-medium text-text-secondary hover:text-aku-green transition-colors px-4 py-2 rounded-lg hover:bg-surface-subtle"
                 >
                   {dashboard.label}
+                  {showBadge && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-aku-amber text-white text-[10px] font-bold flex items-center justify-center"
+                      aria-label={`${unseenCount} unseen update${unseenCount === 1 ? "" : "s"}`}
+                    >
+                      {unseenCount}
+                    </span>
+                  )}
                 </Link>
                 <button
                   onClick={signOut}
@@ -126,7 +157,10 @@ export default function Navbar() {
                 >
                   Sign In
                 </button>
-                <button className="text-sm font-semibold bg-aku-primary text-white px-5 py-2.5 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95">
+                <button
+                  onClick={() => goToSection("#contact")}
+                  className="text-sm font-semibold bg-aku-primary text-white px-5 py-2.5 rounded-full hover:shadow-glow-green transition-all duration-300 hover:scale-105 active:scale-95"
+                >
                   Start Project
                 </button>
               </>
@@ -184,15 +218,19 @@ export default function Navbar() {
               </motion.div>
             )}
 
-            {navigationLinks.map(({ label, href }, index) => (
+            {navigationLinks.map(({ label, hash }, index) => (
               <motion.a
                 key={label}
-                href={href}
+                href={hash || "/"}
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.06 }}
                 className="text-2xl font-display font-semibold text-text-primary hover:text-aku-green transition-colors border-b border-surface-border pb-4"
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  goToSection(hash);
+                  setIsMobileMenuOpen(false);
+                }}
               >
                 {label}
               </motion.a>
@@ -202,10 +240,18 @@ export default function Navbar() {
               <>
                 <Link
                   to={dashboard.href}
-                  className="text-2xl font-display font-semibold text-text-primary hover:text-aku-green transition-colors border-b border-surface-border pb-4"
+                  className="flex items-center gap-3 text-2xl font-display font-semibold text-text-primary hover:text-aku-green transition-colors border-b border-surface-border pb-4"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {dashboard.label}
+                  {showBadge && (
+                    <span
+                      className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-aku-amber text-white text-xs font-bold flex items-center justify-center"
+                      aria-label={`${unseenCount} unseen update${unseenCount === 1 ? "" : "s"}`}
+                    >
+                      {unseenCount}
+                    </span>
+                  )}
                 </Link>
                 <button
                   onClick={() => {

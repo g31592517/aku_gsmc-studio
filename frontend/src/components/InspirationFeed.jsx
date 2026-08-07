@@ -216,7 +216,7 @@ export default function InspirationFeed() {
   });
 
   return (
-    <section id="inspiration" className="py-24 px-6 bg-white section-divider" aria-labelledby="inspiration-heading">
+    <section id="inspiration" className="py-24 px-6 bg-white section-divider scroll-mt-header" aria-labelledby="inspiration-heading">
       <div className="max-w-7xl mx-auto">
         {/* Section header */}
         <motion.div

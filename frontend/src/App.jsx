@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
@@ -17,6 +17,18 @@ import MyRequestsPage from "./pages/MyRequestsPage";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
 
 function LandingPage() {
+  const location = useLocation();
+
+  // Sections only exist on this page — when arriving here with a hash
+  // (e.g. navigated from another route via Navbar), scroll to it once mounted.
+  useEffect(() => {
+    if (!location.hash) return;
+    const target = document.querySelector(location.hash);
+    if (target) {
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [location.hash]);
+
   return (
     <>
       <Hero />

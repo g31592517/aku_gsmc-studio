@@ -110,7 +110,7 @@ function PortfolioProjectCard({ project }) {
 
 export default function PortfolioShowcaseSection() {
   return (
-    <section id="work" className="py-24 px-6 bg-white section-divider" aria-labelledby="portfolio-heading">
+    <section id="work" className="py-24 px-6 bg-white section-divider scroll-mt-header" aria-labelledby="portfolio-heading">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
