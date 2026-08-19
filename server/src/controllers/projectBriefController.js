@@ -36,8 +36,7 @@ async function createProjectBrief(req, res, next) {
       ]
     );
 
-    const briefId = briefResult.rows[0].id;
-
+    const briefId = briefResult.rows[0].id; 
     if (req.files && req.files.length > 0) {
       const insertAttachment = `
         INSERT INTO brief_attachments (brief_id, file_name, file_path, mime_type, file_size_bytes)

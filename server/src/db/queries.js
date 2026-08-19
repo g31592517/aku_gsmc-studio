@@ -1,13 +1,13 @@
 const { sql, getPool } = require("../config/database");
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+
 // Returns a new mssql Request attached to the pool.
 async function createRequest() {
   const pool = await getPool();
   return pool.request();
 }
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
+// USERS 
 
 async function findUserByEmail(email) {
   const result = await (await createRequest())
@@ -48,7 +48,7 @@ async function setUserPassword(userId, passwordHash) {
     `);
 }
 
-// ─── LOOKUPS ──────────────────────────────────────────────────────────────────
+// LOOKUPS 
 
 async function findStatusByName(statusName) {
   const result = await (await createRequest())
@@ -89,8 +89,7 @@ async function getAllCategories() {
   return result.recordset;
 }
 
-// ─── SERVICE REQUESTS ─────────────────────────────────────────────────────────
-
+//  SERVICE REQUESTS 
 async function insertServiceRequest(transaction, {
   userId, categoryId, projectVision,
   budgetRange, projectDeadline, additionalNotes, statusId,

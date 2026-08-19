@@ -36,6 +36,7 @@ export default function StaffDashboardPage() {
   const [filters, setFilters] = useState({ status: "", serviceType: "", clientEmail: "" });
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  //shows summury for the services in the UI
 
   async function fetchSummary() {
     try {
@@ -46,6 +47,7 @@ export default function StaffDashboardPage() {
       console.error("Could not load dashboard summary.");
     }
   }
+  //The callBack hook for caching the functions. 
 
   const fetchRequests = useCallback(async () => {
     setIsLoadingRequests(true);
@@ -206,7 +208,7 @@ export default function StaffDashboardPage() {
     </div>
   );
 }
-
+//For personal use for the staff  for personal follow up.
 function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
   const [newStatus, setNewStatus] = useState(request.status);
   const [staffNote, setStaffNote] = useState("");
