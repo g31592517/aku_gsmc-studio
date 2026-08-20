@@ -7,7 +7,6 @@ import InspirationFeed from "./components/InspirationFeed";
 import Services from "./components/Services";
 import FeaturedWorkReel from "./components/FeaturedWorkReel";
 import ProjectSubmissionWizard from "./components/ProjectBrief";
-import PortfolioShowcaseSection from "./components/Portfolio";
 import CompetitiveAdvantagesSection from "./components/WhyUs";
 import ConversionCallToAction from "./components/CTA";
 import SiteFooter from "./components/Footer";
@@ -36,7 +35,6 @@ function LandingPage() {
       <Services />
       <FeaturedWorkReel />
       <ProjectSubmissionWizard />
-      <PortfolioShowcaseSection />
       <CompetitiveAdvantagesSection />
       <ConversionCallToAction />
     </>
