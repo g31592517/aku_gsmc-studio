@@ -5,7 +5,6 @@ const {
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
   sendStatusUpdateEmail,
-  sendDeliverablesReadyEmail,
 } = require("../services/emailService");
 
 async function createServiceRequest(req, res, next) {
@@ -204,79 +203,6 @@ async function addInternalNote(req, res, next) {
   }
 }
 
-async function uploadDeliverables(req, res, next) {
-  const pool = await getPool();
-  const transaction = new sql.Transaction(pool);
-
-  try {
-    const requestId = Number(req.params.id);
-
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, message: "At least one deliverable file is required." });
-    }
-
-    await transaction.begin();
-
-    const current = await queries.findCurrentRequestStatus(transaction, requestId);
-    if (!current) {
-      await transaction.rollback();
-      return res.status(404).json({ success: false, message: "Request not found." });
-    }
-
-    for (const file of req.files) {
-      await queries.insertAttachment(transaction, {
-        requestId,
-        fileName: file.originalname,
-        filePath: file.filename,
-        mimeType: file.mimetype,
-        fileSizeBytes: file.size,
-        isDeliverable: true,
-        uploadedBy: req.user.userId,
-      });
-    }
-
-    let newStatusName = current.status_name;
-    if (current.status_name !== "completed") {
-      const completedStatus = await queries.findStatusByName("completed");
-      await queries.updateRequestStatusInDb(transaction, requestId, completedStatus.id);
-      await queries.insertStatusHistoryEntry(transaction, {
-        requestId,
-        fromStatusId: current.status_id,
-        toStatusId: completedStatus.id,
-        changedBy: req.user.userId,
-        note: req.body.staffNote || "Final deliverables uploaded",
-      });
-      newStatusName = "completed";
-    }
-
-    await transaction.commit();
-
-    const user = await queries.findUserById(current.user_id);
-    if (user) {
-      sendDeliverablesReadyEmail({
-        requesterEmail: user.email,
-        requestId,
-        deliverableFilenames: req.files.map((f) => f.originalname),
-      }).catch((err) => console.error("Deliverables ready email failed:", err));
-    }
-
-    const [attachments, statusHistory] = await Promise.all([
-      queries.findAttachmentsByRequest(requestId),
-      queries.findStatusHistoryByRequest(requestId),
-    ]);
-    const request = await queries.findRequestById(requestId);
-
-    res.status(201).json({
-      success: true,
-      message: "Deliverables uploaded and request marked completed.",
-      data: { ...request, attachments, statusHistory, status: newStatusName },
-    });
-  } catch (error) {
-    await transaction.rollback();
-    next(error);
-  }
-}
-
 async function downloadAttachment(req, res, next) {
   try {
     const requestId = Number(req.params.id);
@@ -332,7 +258,6 @@ module.exports = {
   getAllRequests,
   updateRequestStatus,
   addInternalNote,
-  uploadDeliverables,
   downloadAttachment,
   getDashboardSummary,
   getServiceCategories,

@@ -5,6 +5,7 @@ const STATUS_STEPS = [
   { key: "assigned", label: "Assigned" },
   { key: "in-progress", label: "In Progress" },
   { key: "awaiting-review", label: "Awaiting Review" },
+  { key: "draft-approved", label: "Draft Approved" },
   { key: "completed", label: "Completed" },
 ];
 

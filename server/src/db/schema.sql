@@ -477,3 +477,56 @@ BEGIN
     (NULL, 'video', 'Video Production',   'featured_work', '-xFqwizHCu4', 1, 11);
 END
 GO
+
+
+-- ─── DRAFT SUBMISSION & CLIENT APPROVAL WORKFLOW ──────────────────────────────
+
+-- New status: sits between 'awaiting-review' and 'completed'
+IF NOT EXISTS (SELECT 1 FROM request_statuses WHERE name = 'draft-approved')
+  INSERT INTO request_statuses (name, label, description, sort_order)
+  VALUES ('draft-approved', 'Draft Approved', 'Client approved the draft — final work can now be submitted', 5);
+
+UPDATE request_statuses SET sort_order = 6 WHERE name = 'completed' AND sort_order = 5;
+UPDATE request_statuses SET sort_order = 7 WHERE name = 'declined' AND sort_order = 6;
+GO
+
+IF OBJECT_ID('request_submissions', 'U') IS NULL
+BEGIN
+  CREATE TABLE request_submissions (
+    id               INT IDENTITY(1,1) PRIMARY KEY,
+    request_id       INT           NOT NULL,
+    submission_type  NVARCHAR(10)  NOT NULL,             -- 'draft' | 'final'
+    note             NVARCHAR(MAX) NULL,                 -- staff's note
+    submitted_by     INT           NOT NULL,
+    submitted_at     DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+    approval_status  NVARCHAR(20)  NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'changes_requested'
+    approved_by      INT           NULL,                 -- client who reviewed
+    approved_at      DATETIME2     NULL,
+    feedback_note    NVARCHAR(MAX) NULL,                 -- client's "request changes" feedback
+
+    CONSTRAINT fk_submission_request      FOREIGN KEY (request_id)   REFERENCES service_requests(id) ON DELETE CASCADE,
+    CONSTRAINT fk_submission_submitted_by FOREIGN KEY (submitted_by) REFERENCES users(id),
+    CONSTRAINT fk_submission_approved_by  FOREIGN KEY (approved_by)  REFERENCES users(id),
+    CONSTRAINT chk_submission_type            CHECK (submission_type IN ('draft','final')),
+    CONSTRAINT chk_submission_approval_status CHECK (approval_status IN ('pending','approved','changes_requested'))
+  );
+  CREATE INDEX idx_submissions_request ON request_submissions(request_id);
+END
+GO
+
+IF OBJECT_ID('request_submission_files', 'U') IS NULL
+BEGIN
+  CREATE TABLE request_submission_files (
+    id              INT IDENTITY(1,1) PRIMARY KEY,
+    submission_id   INT           NOT NULL,
+    file_name       NVARCHAR(255) NOT NULL,
+    file_path       NVARCHAR(500) NOT NULL,
+    mime_type       NVARCHAR(100) NOT NULL,
+    file_size_bytes INT           NOT NULL,
+    uploaded_at     DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    CONSTRAINT fk_submission_file_submission FOREIGN KEY (submission_id) REFERENCES request_submissions(id) ON DELETE CASCADE
+  );
+  CREATE INDEX idx_submission_files_submission ON request_submission_files(submission_id);
+END
+GO

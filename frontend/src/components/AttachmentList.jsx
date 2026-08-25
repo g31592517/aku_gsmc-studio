@@ -8,15 +8,15 @@ export default function AttachmentList({
   title = "Attachments",
   emptyStateText = "No files yet.",
   showMimeType = false,
+  downloadUrlBuilder = (reqId, attachment) =>
+    `/api/service-requests/${reqId}/attachments/${attachment.id}/download`,
 }) {
   const [downloadingId, setDownloadingId] = useState(null);
 
   async function handleDownload(attachment) {
     setDownloadingId(attachment.id);
     try {
-      const response = await apiFetch(
-        `/api/service-requests/${requestId}/attachments/${attachment.id}/download`
-      );
+      const response = await apiFetch(downloadUrlBuilder(requestId, attachment));
       if (!response.ok) throw new Error("Download failed");
 
       const blob = await response.blob();

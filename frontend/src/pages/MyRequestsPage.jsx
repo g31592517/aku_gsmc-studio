@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useCurrentUser } from "../context/UserContext";
 import StatusProgressBar from "../components/StatusProgressBar";
 import AttachmentList from "../components/AttachmentList";
+import ClientDraftReview from "../components/ClientDraftReview";
 import { apiFetch } from "../utils/api";
 
 const STATUS_LABELS = {
@@ -10,6 +11,7 @@ const STATUS_LABELS = {
   assigned: "Assigned",
   "in-progress": "In Progress",
   "awaiting-review": "Awaiting Review",
+  "draft-approved": "Draft Approved",
   completed: "Completed",
 };
 
@@ -18,8 +20,22 @@ const STATUS_COLOURS = {
   assigned: "bg-blue-100 text-blue-700",
   "in-progress": "bg-violet-100 text-violet-700",
   "awaiting-review": "bg-orange-100 text-orange-700",
+  "draft-approved": "bg-teal-100 text-teal-700",
   completed: "bg-green-100 text-green-700",
 };
+
+// Human, non-technical wording for what the client should expect at each stage.
+const STATUS_MESSAGES = {
+  pending: "Your request has been received and is awaiting review.",
+  assigned: "Your request has been assigned to our team.",
+  "in-progress": "Your work is currently being worked on.",
+  "awaiting-review": "Your draft is ready. Please review it.",
+  "draft-approved": "Draft approved. The team is now preparing your final work.",
+  completed: "Your completed work is ready.",
+};
+
+const submissionFileDownloadUrl = (requestId, file) =>
+  `/api/service-requests/${requestId}/submissions/files/${file.id}/download`;
 
 export default function MyRequestsPage() {
   const { currentUser, markRequestsSeen } = useCurrentUser();
@@ -55,9 +71,18 @@ export default function MyRequestsPage() {
 
   async function openRequestDetail(requestId) {
     try {
-      const response = await apiFetch(`/api/service-requests/${requestId}`);
-      const data = await response.json();
-      if (data.success) setSelectedRequest(data.data);
+      const [requestRes, submissionsRes] = await Promise.all([
+        apiFetch(`/api/service-requests/${requestId}`),
+        apiFetch(`/api/service-requests/${requestId}/submissions`),
+      ]);
+      const requestData = await requestRes.json();
+      const submissionsData = await submissionsRes.json();
+      if (requestData.success) {
+        setSelectedRequest({
+          ...requestData.data,
+          submissions: submissionsData.success ? submissionsData.data : [],
+        });
+      }
     } catch {
       setErrorMessage("Could not load request details.");
     }
@@ -68,6 +93,7 @@ export default function MyRequestsPage() {
       <RequestDetailView
         request={selectedRequest}
         onBack={() => setSelectedRequest(null)}
+        onRequestUpdated={(updated) => setSelectedRequest(updated)}
       />
     );
   }
@@ -151,7 +177,7 @@ export default function MyRequestsPage() {
                   aria-label={`View details for ${request.service_type} request`}
                   onKeyDown={(e) => e.key === "Enter" && openRequestDetail(request.id)}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3">
                     <div>
                       <p className="font-display font-bold text-lg text-text-primary">
                         {request.service_type}
@@ -166,6 +192,7 @@ export default function MyRequestsPage() {
                       {STATUS_LABELS[request.status]}
                     </span>
                   </div>
+                  <p className="text-text-secondary text-sm mb-4">{STATUS_MESSAGES[request.status]}</p>
                   <StatusProgressBar currentStatus={request.status} />
                 </motion.div>
               ))}
@@ -177,14 +204,18 @@ export default function MyRequestsPage() {
   );
 }
 
-function RequestDetailView({ request, onBack }) {
+function RequestDetailView({ request, onBack, onRequestUpdated }) {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-GB", {
       day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
 
-  const uploadedFiles = (request.attachments || []).filter((f) => !f.is_deliverable);
-  const deliverables = (request.attachments || []).filter((f) => f.is_deliverable);
+  const uploadedFiles = request.attachments || [];
+  const submissions = request.submissions || [];
+  const pendingDraft = submissions.find(
+    (s) => s.submission_type === "draft" && s.approval_status === "pending"
+  );
+  const finalSubmission = [...submissions].reverse().find((s) => s.submission_type === "final");
 
   return (
     <div className="min-h-screen bg-white pt-header pb-16 px-6">
@@ -199,11 +230,47 @@ function RequestDetailView({ request, onBack }) {
         <div className="space-y-6">
           {/* Status */}
           <div className="bg-white border border-surface-border rounded-2xl p-6">
-            <h2 className="font-display font-bold text-xl text-text-primary mb-5">
+            <h2 className="font-display font-bold text-xl text-text-primary mb-2">
               {request.service_type}
             </h2>
+            <p className="text-text-secondary text-sm mb-5">{STATUS_MESSAGES[request.status]}</p>
             <StatusProgressBar currentStatus={request.status} />
           </div>
+
+          {/* Draft ready for review */}
+          {request.status === "awaiting-review" && pendingDraft && (
+            <ClientDraftReview
+              requestId={request.id}
+              submission={pendingDraft}
+              onReviewed={onRequestUpdated}
+            />
+          )}
+
+          {/* Completed work */}
+          {request.status === "completed" && finalSubmission && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+              <h3 className="font-display font-bold text-lg text-text-primary mb-1">
+                Your completed work is ready
+              </h3>
+              <p className="text-text-secondary text-sm mb-4">
+                Completed on {formatDate(finalSubmission.submitted_at)}
+              </p>
+              {finalSubmission.note && (
+                <div className="bg-white border border-surface-border rounded-xl p-4 mb-4">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">
+                    Note from the team
+                  </p>
+                  <p className="text-sm text-text-secondary leading-relaxed">{finalSubmission.note}</p>
+                </div>
+              )}
+              <AttachmentList
+                attachments={finalSubmission.files}
+                requestId={request.id}
+                title="Final Files"
+                downloadUrlBuilder={submissionFileDownloadUrl}
+              />
+            </div>
+          )}
 
           {/* Project description */}
           <div className="bg-surface-subtle border border-surface-border rounded-2xl p-6">
@@ -214,14 +281,6 @@ function RequestDetailView({ request, onBack }) {
               {request.project_vision}
             </p>
           </div>
-
-          {/* Deliverables from AKU Creative Services */}
-          <AttachmentList
-            attachments={deliverables}
-            requestId={request.id}
-            title="Deliverables from AKU Creative Services"
-            emptyStateText="Your completed work will appear here once it's ready."
-          />
 
           {/* Attachments you uploaded */}
           <AttachmentList

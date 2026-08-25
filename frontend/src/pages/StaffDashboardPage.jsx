@@ -1,25 +1,35 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Clock, CheckCircle2 } from "lucide-react";
 import StatusProgressBar from "../components/StatusProgressBar";
 import AttachmentList from "../components/AttachmentList";
-import DeliverablesUploadCard from "../components/DeliverablesUploadCard";
+import StaffSubmissionCard from "../components/StaffSubmissionCard";
 import { apiFetch } from "../utils/api";
 
+// Full status list — used for badge labels/colours everywhere on this page.
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "assigned", label: "Assigned" },
   { value: "in-progress", label: "In Progress" },
-  { value: "awaiting-review", label: "Awaiting Review" },
+  { value: "awaiting-review", label: "Awaiting Client Review" },
+  { value: "draft-approved", label: "Draft Approved" },
   { value: "completed", label: "Completed" },
 ];
+
+// Statuses staff can set directly from the dropdown. "awaiting-review",
+// "draft-approved" and "completed" are reached only through the draft/final
+// submission workflow (enforced server-side too — see routes/serviceRequests.js).
+const MANUALLY_SETTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter((s) =>
+  ["pending", "assigned", "in-progress"].includes(s.value)
+);
 
 const STATUS_COLOURS = {
   pending: "bg-amber-100 text-amber-700",
   assigned: "bg-blue-100 text-blue-700",
   "in-progress": "bg-violet-100 text-violet-700",
   "awaiting-review": "bg-orange-100 text-orange-700",
+  "draft-approved": "bg-teal-100 text-teal-700",
   completed: "bg-green-100 text-green-700",
 };
 
@@ -27,7 +37,8 @@ const SUMMARY_CARD_CONFIG = [
   { key: "total", label: "Total Requests", colour: "border-l-text-muted" },
   { key: "pending", label: "Pending", colour: "border-l-amber-400" },
   { key: "in_progress", label: "In Progress", colour: "border-l-violet-400" },
-  { key: "awaiting_review", label: "Awaiting Review", colour: "border-l-orange-400" },
+  { key: "awaiting_review", label: "Awaiting Client Review", colour: "border-l-orange-400" },
+  { key: "draft_approved", label: "Draft Approved", colour: "border-l-teal-400" },
   { key: "completed", label: "Completed", colour: "border-l-aku-green" },
 ];
 
@@ -38,7 +49,6 @@ export default function StaffDashboardPage() {
   const [filters, setFilters] = useState({ status: "", serviceType: "", clientEmail: "" });
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  //shows summury for the services in the UI
 
   async function fetchSummary() {
     try {
@@ -49,7 +59,6 @@ export default function StaffDashboardPage() {
       console.error("Could not load dashboard summary.");
     }
   }
-  //The callBack hook for caching the functions. 
 
   const fetchRequests = useCallback(async () => {
     setIsLoadingRequests(true);
@@ -122,7 +131,7 @@ export default function StaffDashboardPage() {
 
           {/* Summary cards */}
           {summary && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
               {SUMMARY_CARD_CONFIG.map(({ key, label, colour }) => (
                 <div
                   key={key}
@@ -214,12 +223,15 @@ export default function StaffDashboardPage() {
               </table>
             </div>
           )}
-        </motion.div>3
+        </motion.div>
       </div>
     </div>
   );
 }
-//For personal use for the staff  for personal follow up.
+
+const submissionFileDownloadUrl = (requestId, file) =>
+  `/api/service-requests/${requestId}/submissions/files/${file.id}/download`;
+
 function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
   const [newStatus, setNewStatus] = useState(request.status);
   const [staffNote, setStaffNote] = useState("");
@@ -228,13 +240,33 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const clientAssets = (request.attachments || []).filter((f) => !f.is_deliverable);
-  const deliverables = (request.attachments || []).filter((f) => f.is_deliverable);
+  const submissions = request.submissions || [];
+
+  // The plain "open request" fetch doesn't include submissions — fetch them
+  // once on first load; any submit/review action afterwards returns the full
+  // payload (including submissions) directly, so no refetch is needed then.
+  useEffect(() => {
+    if (request.submissions) return;
+    let cancelled = false;
+    (async () => {
+      const res = await apiFetch(`/api/service-requests/${request.id}/submissions`);
+      const data = await res.json();
+      if (!cancelled && data.success) {
+        onRequestUpdated({ ...request, submissions: data.data });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request.id]);
+
+  useEffect(() => {
+    setNewStatus(request.status);
+  }, [request.status]);
 
   async function refreshRequest() {
     const refreshed = await apiFetch(`/api/service-requests/${request.id}?includeNotes=true`);
     const refreshedData = await refreshed.json();
-    if (refreshedData.success) onRequestUpdated(refreshedData.data);
+    if (refreshedData.success) onRequestUpdated({ ...refreshedData.data, submissions: request.submissions });
   }
 
   async function handleStatusUpdate() {
@@ -249,6 +281,8 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
         setSuccessMessage("Status updated successfully.");
         setStaffNote("");
         await refreshRequest();
+      } else {
+        setSuccessMessage(data.message || "Could not update status.");
       }
     } catch {
       setSuccessMessage("Could not update status. Please try again.");
@@ -274,11 +308,6 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
     }
   }
 
-  async function handleDeliverablesUploaded(updatedRequest) {
-    setNewStatus(updatedRequest.status);
-    onRequestUpdated(updatedRequest);
-  }
-
   return (
     <div className="min-h-screen bg-surface-subtle pt-header pb-16 px-6">
       <div className="max-w-6xl mx-auto">
@@ -288,6 +317,19 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
         >
           ← Back to Dashboard
         </button>
+
+        {request.status === "awaiting-review" && (
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm font-medium rounded-xl px-4 py-3 mb-6">
+            <Clock size={16} className="flex-shrink-0" aria-hidden="true" />
+            Awaiting Client Review — the client has been notified and needs to review the latest draft.
+          </div>
+        )}
+        {request.status === "draft-approved" && (
+          <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 text-teal-700 text-sm font-medium rounded-xl px-4 py-3 mb-6">
+            <CheckCircle2 size={16} className="flex-shrink-0" aria-hidden="true" />
+            Draft Approved — Final Work Can Be Submitted.
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
@@ -326,21 +368,59 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
               </p>
             </div>
 
-            {/* Attachments */}
+            {/* Client-submitted attachments */}
             <AttachmentList
-              attachments={clientAssets}
+              attachments={request.attachments || []}
               requestId={request.id}
               title="Client Assets"
               emptyStateText="No files uploaded by the client."
               showMimeType
             />
-            <AttachmentList
-              attachments={deliverables}
-              requestId={request.id}
-              title="Delivered Files"
-              emptyStateText="Nothing delivered yet."
-              showMimeType
-            />
+
+            {/* Draft / final submission history */}
+            {submissions.length > 0 && (
+              <div className="bg-white border border-surface-border rounded-2xl p-6">
+                <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-4">
+                  Submission History
+                </h3>
+                <div className="space-y-4">
+                  {submissions.map((submission) => (
+                    <div key={submission.id} className="bg-surface-subtle border border-surface-border rounded-xl p-4">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className="text-sm font-semibold text-text-primary capitalize">
+                          {submission.submission_type} — {new Date(submission.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                        {submission.submission_type === "draft" && (
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            submission.approval_status === "approved" ? "bg-green-100 text-green-700"
+                            : submission.approval_status === "changes_requested" ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {submission.approval_status === "approved" ? "Approved"
+                              : submission.approval_status === "changes_requested" ? "Changes Requested"
+                              : "Pending Review"}
+                          </span>
+                        )}
+                      </div>
+                      {submission.note && (
+                        <p className="text-text-secondary text-sm mb-2">{submission.note}</p>
+                      )}
+                      {submission.feedback_note && (
+                        <p className="text-red-600 text-sm mb-3">
+                          <span className="font-medium">Client feedback:</span> {submission.feedback_note}
+                        </p>
+                      )}
+                      <AttachmentList
+                        attachments={submission.files}
+                        requestId={request.id}
+                        title="Files"
+                        downloadUrlBuilder={submissionFileDownloadUrl}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Internal notes — staff only */}
             <div className="bg-white border border-surface-border rounded-2xl p-6">
@@ -378,7 +458,7 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
             </div>
           </div>
 
-          {/* Right column — status management + delivery */}
+          {/* Right column — status management + submissions */}
           <div className="lg:col-span-2 space-y-5">
             <div className="bg-white border border-surface-border rounded-2xl p-6">
               <h3 className="font-semibold text-text-primary text-sm uppercase tracking-wider mb-4">
@@ -387,12 +467,17 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
               <StatusProgressBar currentStatus={request.status} />
               <div className="mt-8 space-y-4">
                 <select
-                  value={newStatus}
+                  value={MANUALLY_SETTABLE_STATUS_OPTIONS.some((s) => s.value === newStatus) ? newStatus : ""}
                   onChange={(e) => setNewStatus(e.target.value)}
                   className="w-full bg-surface-subtle border border-surface-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-aku-green/50 transition-colors"
                   aria-label="Select new status"
                 >
-                  {STATUS_OPTIONS.map((s) => (
+                  {!MANUALLY_SETTABLE_STATUS_OPTIONS.some((s) => s.value === request.status) && (
+                    <option value="" disabled>
+                      {STATUS_OPTIONS.find((s) => s.value === request.status)?.label || request.status}
+                    </option>
+                  )}
+                  {MANUALLY_SETTABLE_STATUS_OPTIONS.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
@@ -405,7 +490,7 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
                 />
                 <button
                   onClick={handleStatusUpdate}
-                  disabled={isSavingStatus || newStatus === request.status}
+                  disabled={isSavingStatus || !MANUALLY_SETTABLE_STATUS_OPTIONS.some((s) => s.value === newStatus) || newStatus === request.status}
                   className="w-full bg-aku-primary text-white font-semibold text-sm py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-glow-green transition-all duration-300"
                 >
                   {isSavingStatus ? "Saving…" : "Save Status"}
@@ -416,10 +501,10 @@ function StaffRequestDetailView({ request, onBack, onRequestUpdated }) {
               </div>
             </div>
 
-            <DeliverablesUploadCard
+            <StaffSubmissionCard
               requestId={request.id}
               currentStatus={request.status}
-              onUploaded={handleDeliverablesUploaded}
+              onSubmitted={(updated) => onRequestUpdated(updated)}
             />
           </div>
         </div>

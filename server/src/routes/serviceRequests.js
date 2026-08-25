@@ -10,20 +10,35 @@ const {
   getAllRequests,
   updateRequestStatus,
   addInternalNote,
-  uploadDeliverables,
   downloadAttachment,
   getDashboardSummary,
 } = require("../controllers/serviceRequestController");
+const {
+  createSubmission,
+  listSubmissions,
+  reviewSubmission,
+  downloadSubmissionFile,
+} = require("../controllers/requestSubmissionController");
 
 const router = express.Router();
 
-const ALLOWED_STATUSES = [
+// All valid statuses — used for filtering/display (GET /).
+const ALL_STATUSES = [
   "pending",
   "assigned",
   "in-progress",
   "awaiting-review",
+  "draft-approved",
   "completed",
+  "declined",
 ];
+
+// Statuses staff may set directly via PATCH /:id/status. "awaiting-review",
+// "draft-approved" and "completed" are deliberately excluded — those are only
+// reachable through the draft/final submission and client-review endpoints
+// below, so the approval workflow can't be bypassed by calling this endpoint
+// directly (enforced here, not just hidden in the UI).
+const MANUALLY_SETTABLE_STATUSES = ["pending", "assigned", "in-progress"];
 
 // Dashboard summary — staff only
 router.get("/dashboard/summary", requireRole("staff", "admin"), getDashboardSummary);
@@ -33,7 +48,7 @@ router.get(
   "/",
   requireRole("staff", "admin"),
   [
-    query("status").optional().isIn(ALLOWED_STATUSES),
+    query("status").optional().isIn(ALL_STATUSES),
     query("serviceType").optional().trim(),
     query("clientEmail").optional().trim(),
   ],
@@ -86,7 +101,7 @@ router.patch(
   [
     param("id").isInt().withMessage("Invalid request ID."),
     body("newStatus")
-      .isIn(ALLOWED_STATUSES)
+      .isIn(MANUALLY_SETTABLE_STATUSES)
       .withMessage("Invalid status value."),
     body("staffNote").optional().trim(),
   ],
@@ -106,17 +121,55 @@ router.post(
   addInternalNote
 );
 
-// Upload final deliverables + mark completed — staff only
+// Submit a draft or final work submission — staff only. The backend (not
+// this route) enforces which submissionType is allowed for the request's
+// current status — see requestSubmissionController.createSubmission.
 router.post(
-  "/:id/deliverables",
+  "/:id/submissions",
   requireRole("staff", "admin"),
-  upload.array("deliverables", 10),
+  upload.array("files", 10),
   [
     param("id").isInt().withMessage("Invalid request ID."),
-    body("staffNote").optional().trim(),
+    body("submissionType").isIn(["draft", "final"]).withMessage("Invalid submission type."),
+    body("note").optional().trim(),
   ],
   validateRequest,
-  uploadDeliverables
+  createSubmission
+);
+
+// List submissions for a request — client (own request) and staff
+router.get(
+  "/:id/submissions",
+  requireAuth,
+  [param("id").isInt().withMessage("Invalid request ID.")],
+  validateRequest,
+  listSubmissions
+);
+
+// Client reviews a draft submission — client (own request) only
+router.patch(
+  "/:id/submissions/:submissionId/review",
+  requireAuth,
+  [
+    param("id").isInt().withMessage("Invalid request ID."),
+    param("submissionId").isInt().withMessage("Invalid submission ID."),
+    body("decision").isIn(["approve", "request_changes"]).withMessage("Invalid decision."),
+    body("feedbackNote").optional().trim(),
+  ],
+  validateRequest,
+  reviewSubmission
+);
+
+// Download a submission file under its original filename — client (own request) and staff
+router.get(
+  "/:id/submissions/files/:fileId/download",
+  requireAuth,
+  [
+    param("id").isInt().withMessage("Invalid request ID."),
+    param("fileId").isInt().withMessage("Invalid file ID."),
+  ],
+  validateRequest,
+  downloadSubmissionFile
 );
 
 // Download an attachment under its original filename — client (own request) and staff

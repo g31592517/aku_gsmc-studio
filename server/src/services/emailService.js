@@ -109,6 +109,7 @@ async function sendStatusUpdateEmail({ requesterEmail, requestId, newStatus }) {
     assigned: "Assigned to a team member",
     "in-progress": "In Progress",
     "awaiting-review": "Awaiting Review",
+    "draft-approved": "Draft Approved",
     completed: "Completed",
   };
 
@@ -133,9 +134,9 @@ AKU Graduate School of Media and Communications
   await transporter.sendMail(mailOptions);
 }
 
-async function sendDeliverablesReadyEmail({ requesterEmail, requestId, deliverableFilenames = [] }) {
-  const fileList = deliverableFilenames.length > 0
-    ? deliverableFilenames.map((name) => `• ${name}`).join("\n")
+async function sendCompletedWorkEmail({ requesterEmail, requestId, finalFilenames = [], note }) {
+  const fileList = finalFilenames.length > 0
+    ? finalFilenames.map((name) => `• ${name}`).join("\n")
     : "";
 
   const mailOptions = {
@@ -147,14 +148,85 @@ Hi,
 
 Great news — your service request (ID: ${requestId}) has been completed and the final files are ready.
 
-Delivered Files
-----------------
+Final Files
+-----------
 ${fileList}
-
+${note ? `\nNote from the team:\n${note}\n` : ""}
 Sign in to "My Requests" on AKU Creative Services to download your completed work.
 
 Best regards,
 AKU Graduate School of Media and Communications
+    `.trim(),
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendDraftReadyEmail({ requesterEmail, requestId, draftFilenames = [], note }) {
+  const fileList = draftFilenames.length > 0
+    ? draftFilenames.map((name) => `• ${name}`).join("\n")
+    : "";
+
+  const mailOptions = {
+    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    to: requesterEmail,
+    subject: `Your draft is ready for review — AKU Creative Services`,
+    text: `
+Hi,
+
+A draft for your service request (ID: ${requestId}) is ready for your review.
+
+Draft Files
+-----------
+${fileList}
+${note ? `\nNote from the team:\n${note}\n` : ""}
+Sign in to "My Requests" on AKU Creative Services to review the draft and approve it, or request changes.
+
+Best regards,
+AKU Graduate School of Media and Communications
+    `.trim(),
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendDraftApprovedEmail({ staffEmail, requestId }) {
+  const mailOptions = {
+    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    to: staffEmail,
+    subject: `Draft approved — you can now submit final work (Request #${requestId})`,
+    text: `
+Hi,
+
+The client approved the draft for service request #${requestId}.
+
+You can now submit the completed/final work for this request.
+
+Best regards,
+AKU Creative Services
+    `.trim(),
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+async function sendChangesRequestedEmail({ staffEmail, requestId, feedbackNote }) {
+  const mailOptions = {
+    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    to: staffEmail,
+    subject: `Client requested changes — Request #${requestId}`,
+    text: `
+Hi,
+
+The client requested changes to the draft for service request #${requestId}.
+
+Client feedback:
+${feedbackNote || "(no additional feedback provided)"}
+
+Please revise and submit a new draft when ready.
+
+Best regards,
+AKU Creative Services
     `.trim(),
   };
 
@@ -166,5 +238,8 @@ module.exports = {
   sendServiceRequestEmail,
   sendRequesterConfirmationEmail,
   sendStatusUpdateEmail,
-  sendDeliverablesReadyEmail,
+  sendCompletedWorkEmail,
+  sendDraftReadyEmail,
+  sendDraftApprovedEmail,
+  sendChangesRequestedEmail,
 };

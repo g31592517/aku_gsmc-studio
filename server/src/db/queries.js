@@ -373,6 +373,7 @@ async function getDashboardCounts() {
         SUM(CASE WHEN rs.name = 'assigned'        THEN 1 ELSE 0 END) AS assigned,
         SUM(CASE WHEN rs.name = 'in-progress'     THEN 1 ELSE 0 END) AS in_progress,
         SUM(CASE WHEN rs.name = 'awaiting-review' THEN 1 ELSE 0 END) AS awaiting_review,
+        SUM(CASE WHEN rs.name = 'draft-approved'  THEN 1 ELSE 0 END) AS draft_approved,
         SUM(CASE WHEN rs.name = 'completed'       THEN 1 ELSE 0 END) AS completed
       FROM service_requests sr
       JOIN request_statuses rs ON rs.id = sr.status_id
@@ -523,6 +524,111 @@ async function deleteInspirationAsset(id) {
     .query(`DELETE FROM inspiration_assets WHERE id = @id`);
 }
 
+// REQUEST SUBMISSIONS (draft / final approval workflow)
+
+async function insertSubmission(transaction, { requestId, submissionType, note, submittedBy }) {
+  const result = await transaction.request()
+    .input("requestId",      sql.Int,               requestId)
+    .input("submissionType", sql.NVarChar(10),      submissionType)
+    .input("note",           sql.NVarChar(sql.MAX), note || null)
+    .input("submittedBy",    sql.Int,               submittedBy)
+    .query(`
+      INSERT INTO request_submissions (request_id, submission_type, note, submitted_by)
+      OUTPUT INSERTED.id
+      VALUES (@requestId, @submissionType, @note, @submittedBy)
+    `);
+
+  return result.recordset[0].id;
+}
+
+async function insertSubmissionFile(transaction, { submissionId, fileName, filePath, mimeType, fileSizeBytes }) {
+  await transaction.request()
+    .input("submissionId",   sql.Int,           submissionId)
+    .input("fileName",       sql.NVarChar(255), fileName)
+    .input("filePath",       sql.NVarChar(500), filePath)
+    .input("mimeType",       sql.NVarChar(100), mimeType)
+    .input("fileSizeBytes",  sql.Int,           fileSizeBytes)
+    .query(`
+      INSERT INTO request_submission_files
+        (submission_id, file_name, file_path, mime_type, file_size_bytes)
+      VALUES
+        (@submissionId, @fileName, @filePath, @mimeType, @fileSizeBytes)
+    `);
+}
+
+async function findSubmissionsByRequest(requestId) {
+  const result = await (await createRequest())
+    .input("requestId", sql.Int, requestId)
+    .query(`
+      SELECT rs.id, rs.request_id, rs.submission_type, rs.note, rs.submitted_at,
+             rs.approval_status, rs.approved_at, rs.feedback_note,
+             su.email AS submitted_by_email,
+             au.email AS approved_by_email
+      FROM   request_submissions rs
+      JOIN   users su               ON su.id = rs.submitted_by
+      LEFT JOIN users au            ON au.id = rs.approved_by
+      WHERE  rs.request_id = @requestId
+      ORDER  BY rs.submitted_at ASC
+    `);
+
+  return result.recordset;
+}
+
+async function findSubmissionFilesBySubmission(submissionId) {
+  const result = await (await createRequest())
+    .input("submissionId", sql.Int, submissionId)
+    .query(`
+      SELECT id, file_name, mime_type, file_size_bytes, uploaded_at
+      FROM   request_submission_files
+      WHERE  submission_id = @submissionId
+    `);
+
+  return result.recordset;
+}
+
+async function findSubmissionById(transaction, submissionId) {
+  const result = await transaction.request()
+    .input("id", sql.Int, submissionId)
+    .query(`
+      SELECT id, request_id, submission_type, submitted_by, approval_status
+      FROM   request_submissions
+      WHERE  id = @id
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function findSubmissionFileById(fileId) {
+  const result = await (await createRequest())
+    .input("id", sql.Int, fileId)
+    .query(`
+      SELECT sf.id, sf.submission_id, sf.file_name, sf.file_path, sf.mime_type,
+             rs.request_id, sr.user_id AS request_owner_id
+      FROM   request_submission_files sf
+      JOIN   request_submissions      rs ON rs.id = sf.submission_id
+      JOIN   service_requests         sr ON sr.id = rs.request_id
+      WHERE  sf.id = @id
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function updateSubmissionApproval(transaction, submissionId, { approvalStatus, approvedBy, feedbackNote }) {
+  await transaction.request()
+    .input("id",             sql.Int,               submissionId)
+    .input("approvalStatus", sql.NVarChar(20),      approvalStatus)
+    .input("approvedBy",     sql.Int,               approvedBy)
+    .input("feedbackNote",   sql.NVarChar(sql.MAX), feedbackNote || null)
+    .query(`
+      UPDATE request_submissions
+      SET    approval_status = @approvalStatus,
+             approved_by     = @approvedBy,
+             approved_at     = SYSUTCDATETIME(),
+             feedback_note   = @feedbackNote
+      WHERE  id = @id
+    `);
+}
+
 module.exports = {
   findUserByEmail,
   insertUserWithPassword,
@@ -553,4 +659,11 @@ module.exports = {
   updateInspirationAsset,
   setInspirationAssetPublishState,
   deleteInspirationAsset,
+  insertSubmission,
+  insertSubmissionFile,
+  findSubmissionsByRequest,
+  findSubmissionFilesBySubmission,
+  findSubmissionById,
+  findSubmissionFileById,
+  updateSubmissionApproval,
 };
