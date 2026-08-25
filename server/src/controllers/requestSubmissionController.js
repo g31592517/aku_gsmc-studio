@@ -55,7 +55,7 @@ async function createSubmission(req, res, next) {
       return res.status(404).json({ success: false, message: "Request not found." });
     }
 
-    // Enforced server-side, independent of the UI — the core rule of this workflow.
+    // Enforced rule on the server side yenye ina alolow submission of final work unless the draft was approved already. 
     if (submissionType === "draft" && current.status_name !== "in-progress") {
       await transaction.rollback();
       return res.status(409).json({
