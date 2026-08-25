@@ -11,7 +11,9 @@ const categoryAccent = {
 };
 
 export default function VideoPreviewCard({ video, index, onPlay, cardHeight = "h-56" }) {
-  const { title, authorName, isLoaded } = useYoutubeMetadata(video.youtubeId);
+  const { title: fetchedTitle, authorName, isLoaded: metaLoaded } = useYoutubeMetadata(video.youtubeId);
+  const title = video.title || fetchedTitle;
+  const isLoaded = video.title ? true : metaLoaded;
   const accentGradient = categoryAccent[video.category] || "from-aku-green to-aku-greenLight";
 
   return (

@@ -2,12 +2,14 @@ import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Video,
-  Camera,
+  Image,
+  BookOpen,
+  Package,
+  Film,
   Mic2,
   Upload,
   FileText,
   Music,
-  Image,
   X,
   Check,
   ChevronRight,
@@ -19,29 +21,44 @@ const WIZARD_STEPS = ["Service", "Vision", "Assets", "Details", "Review"];
 
 // service id -> exact `name` in the service_categories table
 const SERVICE_CATEGORY_NAMES = {
-  videography: "Videography",
-  photography: "Photography",
-  "audio-editing": "Audio Editing",
+  "flyer-poster-design": "Flyer & Poster Design",
+  "print-publication-design": "Print & Publication Design",
+  "merchandise-mockup-design": "Merchandise & Mockup Design",
+  "animated-explainer-videos": "Animated Explainer Videos",
+  "podcast-production": "Podcast Production",
+  "videography-photography": "Professional Videography & Photography",
 };
 
 const availableServices = [
   {
-    id: "videography",
-    icon: Video,
-    label: "Videography",
-    iconGradient: "from-aku-green to-aku-greenLight",
+    id: "flyer-poster-design",
+    icon: Image,
+    label: "Flyer & Poster Design",
   },
   {
-    id: "photography",
-    icon: Camera,
-    label: "Photography",
-    iconGradient: "from-aku-violet to-aku-green",
+    id: "print-publication-design",
+    icon: BookOpen,
+    label: "Print & Publication Design",
   },
   {
-    id: "audio-editing",
+    id: "merchandise-mockup-design",
+    icon: Package,
+    label: "Merchandise & Mockup Design",
+  },
+  {
+    id: "animated-explainer-videos",
+    icon: Film,
+    label: "Animated Explainer Videos",
+  },
+  {
+    id: "podcast-production",
     icon: Mic2,
-    label: "Audio Editing",
-    iconGradient: "from-aku-amber to-aku-green",
+    label: "Podcast Production",
+  },
+  {
+    id: "videography-photography",
+    icon: Video,
+    label: "Professional Videography & Photography",
   },
 ];
 
@@ -291,29 +308,29 @@ export default function ProjectSubmissionWizard() {
                     </h3>
                     
                     <div
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-4"
                       role="radiogroup"
                       aria-label="Select a service"
                     >
-                      {availableServices.map(({ id, icon: Icon, label, iconGradient }) => (
+                      {availableServices.map(({ id, icon: Icon, label }) => (
                         <button
                           key={id}
                           onClick={() => setSelectedService(id)}
                           role="radio"
                           aria-checked={selectedService === id}
-                          className={`flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all duration-300 ${
+                          className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all duration-300 ${
                             selectedService === id
                               ? "border-aku-green/60 bg-aku-green/10 shadow-glow-green-sm"
                               : "border-surface-border bg-surface-subtle hover:border-aku-green/30"
                           }`}
                         >
                           <div
-                            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${iconGradient} flex items-center justify-center`}
+                            className="w-12 h-12 rounded-xl bg-aku-green flex items-center justify-center flex-shrink-0"
                             aria-hidden="true"
                           >
                             <Icon size={22} className="text-white" />
                           </div>
-                          <span className="text-sm font-semibold text-text-primary">
+                          <span className="text-sm font-semibold text-text-primary text-center leading-snug">
                             {label}
                           </span>
                         </button>

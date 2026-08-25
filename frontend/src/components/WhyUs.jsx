@@ -7,42 +7,36 @@ const competitiveAdvantages = [
   icon: Zap,
   title: "Quick Delivery",
   description: "We deliver your projects on time without compromising on quality.",
-  iconGradient: "from-amber-500 to-aku-green",
 },
 
 {
   icon: Palette,
   title: "Creative Excellence",
   description: "Fresh ideas, thoughtful designs and attention to detail in every project.",
-  iconGradient: "from-aku-green to-aku-greenLight",
 },
 
 {
   icon: Users,
   title: "Professional Team",
   description: "Work with a skilled team of designers, editors, photographers and videographers who are passionate about what they do.",
-  iconGradient: "from-aku-violet to-aku-green",
 },
 
 {
   icon: DollarSign,
   title: "Transparent Pricing",
   description: "Clear pricing , no hidden costs or unexpected charges.",
-  iconGradient: "from-aku-green to-aku-greenLight",
 },
 
 {
   icon: MessageSquare,
   title: "Collaborative Process",
   description: "Your feedback matters. We work with you throughout the process to make sure the final result meets your expectations.",
-  iconGradient: "from-aku-amber to-aku-green",
 },
 
 {
   icon: Trophy,
   title: "High-Quality Results",
   description: "Every project is carefully crafted to deliver a polished and professional final product.",
-  iconGradient: "from-aku-violet to-aku-green",
 },
 ];
 
@@ -95,7 +89,7 @@ export default function CompetitiveAdvantagesSection() {
                 aria-label={advantage.title}
               >
                 <div
-                  className={`w-11 h-11 rounded-xl bg-gradient-to-br ${advantage.iconGradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                  className="w-11 h-11 rounded-xl bg-aku-green flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
                   aria-hidden="true"
                 >
                   <Icon size={20} className="text-white" />

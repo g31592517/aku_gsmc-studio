@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Image as ImageIcon } from "lucide-react";
 import StatusProgressBar from "../components/StatusProgressBar";
 import AttachmentList from "../components/AttachmentList";
 import DeliverablesUploadCard from "../components/DeliverablesUploadCard";
@@ -100,13 +102,22 @@ export default function StaffDashboardPage() {
       <div className="max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
-          <div className="mb-10">
-            <span className="text-aku-greenLight text-xs font-semibold tracking-widest uppercase">
-              Staff Portal
-            </span>
-            <h1 className="font-display font-extrabold text-3xl text-text-primary mt-1">
-              Graphics & Design Dashboard
-            </h1>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+            <div>
+              <span className="text-aku-greenLight text-xs font-semibold tracking-widest uppercase">
+                Staff Portal
+              </span>
+              <h1 className="font-display font-extrabold text-3xl text-text-primary mt-1">
+                Graphics & Design Dashboard
+              </h1>
+            </div>
+            <Link
+              to="/staff/inspiration"
+              className="flex items-center gap-2 bg-white border border-surface-border text-text-primary font-semibold text-sm px-5 py-2.5 rounded-full hover:border-aku-green/40 hover:bg-surface-subtle transition-all duration-300 w-fit"
+            >
+              <ImageIcon size={16} aria-hidden="true" />
+              Manage Inspiration & Assets
+            </Link>
           </div>
 
           {/* Summary cards */}

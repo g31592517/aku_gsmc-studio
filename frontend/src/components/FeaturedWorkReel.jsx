@@ -1,19 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import VideoPreviewCard from "./VideoPreviewCard";
 import VideoLightboxModal from "./VideoLightboxModal";
-import { featuredVideoReel } from "../utils/videoData";
+import { apiFetch } from "../utils/api";
+import { mapInspirationAsset } from "../utils/inspirationAssets";
 
 const filterTabs = ["All", "Podcast Production", "Audio Production", "Video Production"];
 
 export default function FeaturedWorkReel() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeVideo, setActiveVideo] = useState(null);
+  const [videos, setVideos] = useState([]);
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await apiFetch("/api/inspiration-assets?placement=featured_work");
+        const data = await response.json();
+        if (data.success) setVideos(data.data.map(mapInspirationAsset));
+      } catch {
+        // Section stays empty on failure — not critical to page function
+      }
+    }
+    fetchVideos();
+  }, []);
 
   const visibleVideos =
-    activeFilter === "All"
-      ? featuredVideoReel
-      : featuredVideoReel.filter((v) => v.category === activeFilter);
+    activeFilter === "All" ? videos : videos.filter((v) => v.category === activeFilter);
 
   return (
     <section

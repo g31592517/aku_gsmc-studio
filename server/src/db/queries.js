@@ -393,6 +393,136 @@ async function findUserById(userId) {
   return result.recordset[0] || null;
 }
 
+// ─── INSPIRATION ASSETS ───────────────────────────────────────────────────────
+
+async function insertInspirationAsset({
+  title, description, mediaType, category, placement,
+  youtubeId, filePath, mimeType, fileSizeBytes, isPublished, displayOrder, createdBy,
+}) {
+  const result = await (await createRequest())
+    .input("title",         sql.NVarChar(200),     title || null)
+    .input("description",   sql.NVarChar(sql.MAX), description || null)
+    .input("mediaType",     sql.NVarChar(10),      mediaType)
+    .input("category",      sql.NVarChar(100),     category)
+    .input("placement",     sql.NVarChar(20),      placement)
+    .input("youtubeId",     sql.NVarChar(20),      youtubeId || null)
+    .input("filePath",      sql.NVarChar(500),     filePath || null)
+    .input("mimeType",      sql.NVarChar(100),     mimeType || null)
+    .input("fileSizeBytes", sql.Int,               fileSizeBytes || null)
+    .input("isPublished",   sql.Bit,               !!isPublished)
+    .input("displayOrder",  sql.TinyInt,           displayOrder || 0)
+    .input("createdBy",     sql.Int,               createdBy || null)
+    .query(`
+      INSERT INTO inspiration_assets
+        (title, description, media_type, category, placement,
+         youtube_id, file_path, mime_type, file_size_bytes, is_published, display_order, created_by)
+      OUTPUT INSERTED.id
+      VALUES
+        (@title, @description, @mediaType, @category, @placement,
+         @youtubeId, @filePath, @mimeType, @fileSizeBytes, @isPublished, @displayOrder, @createdBy)
+    `);
+
+  return result.recordset[0].id;
+}
+
+function applyInspirationFilters(request, { placement, category, mediaType }) {
+  let clause = "";
+  if (placement) {
+    request.input("placement", sql.NVarChar(20), placement);
+    clause += " AND (placement = @placement OR placement = 'both')";
+  }
+  if (category) {
+    request.input("category", sql.NVarChar(100), category);
+    clause += " AND category = @category";
+  }
+  if (mediaType) {
+    request.input("mediaType", sql.NVarChar(10), mediaType);
+    clause += " AND media_type = @mediaType";
+  }
+  return clause;
+}
+
+async function findPublishedInspirationAssets({ placement, category }) {
+  const request = await createRequest();
+  const filter = applyInspirationFilters(request, { placement, category });
+  const result = await request.query(`
+    SELECT id, title, description, media_type, category, placement,
+           youtube_id, file_path, mime_type, is_published, display_order, created_at
+    FROM   inspiration_assets
+    WHERE  is_published = 1 ${filter}
+    ORDER  BY display_order ASC, created_at DESC
+  `);
+  return result.recordset;
+}
+
+async function findAllInspirationAssets({ placement, category, mediaType }) {
+  const request = await createRequest();
+  const filter = applyInspirationFilters(request, { placement, category, mediaType });
+  const result = await request.query(`
+    SELECT id, title, description, media_type, category, placement,
+           youtube_id, file_path, mime_type, file_size_bytes,
+           is_published, display_order, created_at, updated_at
+    FROM   inspiration_assets
+    WHERE  1 = 1 ${filter}
+    ORDER  BY created_at DESC
+  `);
+  return result.recordset;
+}
+
+async function findInspirationAssetById(id) {
+  const result = await (await createRequest())
+    .input("id", sql.Int, id)
+    .query(`SELECT * FROM inspiration_assets WHERE id = @id`);
+  return result.recordset[0] || null;
+}
+
+async function updateInspirationAsset(id, {
+  title, description, mediaType, category, placement,
+  youtubeId, filePath, mimeType, fileSizeBytes, isPublished, displayOrder, updatedBy,
+}) {
+  await (await createRequest())
+    .input("id",             sql.Int,               id)
+    .input("title",          sql.NVarChar(200),     title || null)
+    .input("description",    sql.NVarChar(sql.MAX), description || null)
+    .input("mediaType",      sql.NVarChar(10),      mediaType)
+    .input("category",       sql.NVarChar(100),     category)
+    .input("placement",      sql.NVarChar(20),      placement)
+    .input("youtubeId",      sql.NVarChar(20),      youtubeId || null)
+    .input("filePath",       sql.NVarChar(500),     filePath || null)
+    .input("mimeType",       sql.NVarChar(100),     mimeType || null)
+    .input("fileSizeBytes",  sql.Int,               fileSizeBytes || null)
+    .input("isPublished",    sql.Bit,               isPublished)
+    .input("displayOrder",   sql.TinyInt,           displayOrder || 0)
+    .input("updatedBy",      sql.Int,               updatedBy || null)
+    .query(`
+      UPDATE inspiration_assets
+      SET    title = @title, description = @description, media_type = @mediaType,
+             category = @category, placement = @placement, youtube_id = @youtubeId,
+             file_path = @filePath, mime_type = @mimeType, file_size_bytes = @fileSizeBytes,
+             is_published = @isPublished, display_order = @displayOrder,
+             updated_by = @updatedBy, updated_at = SYSUTCDATETIME()
+      WHERE  id = @id
+    `);
+}
+
+async function setInspirationAssetPublishState(id, isPublished, updatedBy) {
+  await (await createRequest())
+    .input("id", sql.Int, id)
+    .input("isPublished", sql.Bit, isPublished)
+    .input("updatedBy", sql.Int, updatedBy || null)
+    .query(`
+      UPDATE inspiration_assets
+      SET    is_published = @isPublished, updated_by = @updatedBy, updated_at = SYSUTCDATETIME()
+      WHERE  id = @id
+    `);
+}
+
+async function deleteInspirationAsset(id) {
+  await (await createRequest())
+    .input("id", sql.Int, id)
+    .query(`DELETE FROM inspiration_assets WHERE id = @id`);
+}
+
 module.exports = {
   findUserByEmail,
   insertUserWithPassword,
@@ -416,4 +546,11 @@ module.exports = {
   insertInternalNote,
   getDashboardCounts,
   findUserById,
+  insertInspirationAsset,
+  findPublishedInspirationAssets,
+  findAllInspirationAssets,
+  findInspirationAssetById,
+  updateInspirationAsset,
+  setInspirationAssetPublishState,
+  deleteInspirationAsset,
 };

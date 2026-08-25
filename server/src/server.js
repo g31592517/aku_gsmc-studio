@@ -10,6 +10,8 @@ const { verifyDatabaseConnection } = require("./config/database");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/auth");
 const serviceRequestRoutes = require("./routes/serviceRequests");
+const serviceCategoryRoutes = require("./routes/serviceCategories");
+const inspirationAssetRoutes = require("./routes/inspirationAssets");
 
 const app = express();
 
@@ -18,7 +20,14 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Serve uploaded files so the frontend can download attachments
+// Serve uploaded files so the frontend can download/embed attachments and
+// inspiration assets. Relax helmet's default same-origin CORP header here
+// only — these files are meant to be publicly embeddable (e.g. <img> tags
+// on the frontend origin) — the rest of the API keeps helmet's defaults.
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+});
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Health check
@@ -28,6 +37,8 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/service-requests", serviceRequestRoutes);
+app.use("/api/service-categories", serviceCategoryRoutes);
+app.use("/api/inspiration-assets", inspirationAssetRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found." });

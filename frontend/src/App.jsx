@@ -14,6 +14,10 @@ import AuthModal from "./components/AuthModal";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MyRequestsPage from "./pages/MyRequestsPage";
 import StaffDashboardPage from "./pages/StaffDashboardPage";
+import ServicesPage from "./pages/ServicesPage";
+import FeaturedWorkPage from "./pages/FeaturedWorkPage";
+import InspirationPage from "./pages/InspirationPage";
+import StaffInspirationPage from "./pages/StaffInspirationPage";
 
 function LandingPage() {
   const location = useLocation();
@@ -66,6 +70,17 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/staff/inspiration"
+              element={
+                <ProtectedRoute allowedRoles={["staff", "admin"]}>
+                  <StaffInspirationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/work" element={<FeaturedWorkPage />} />
+            <Route path="/inspiration" element={<InspirationPage />} />
           </Routes>
         </main>
         <SiteFooter />
