@@ -172,7 +172,7 @@ export default function StaffInspirationPage() {
           to="/staff/dashboard"
           className="flex items-center gap-2 text-sm text-text-muted hover:text-aku-green transition-colors mb-8 font-medium w-fit"
         >
-          ← Back to Dashboard
+           Back to Dashboard
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -181,7 +181,7 @@ export default function StaffInspirationPage() {
               Staff Portal
             </span>
             <h1 className="font-display font-extrabold text-3xl text-text-primary mt-1">
-              Inspiration & Assets
+              Inspiration and  Assets
             </h1>
           </div>
           <button

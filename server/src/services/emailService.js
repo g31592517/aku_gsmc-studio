@@ -1,9 +1,16 @@
 const nodemailer = require("nodemailer");
 
+// Institutional SMTP relay (mail.ea.aku.edu) currently requires no authentication.
+// SMTP_USER/SMTP_PASSWORD are read only if ICT later confirms auth is required —
+// until then this block stays inert and the transporter connects anonymously.
 const transportConfig = {
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === "true",
+  // Institutional relay is assumed to be plain/unencrypted SMTP on the internal
+  // network for now (its STARTTLS cert isn't trusted by Node). Set
+  // SMTP_IGNORE_TLS=false once ICT confirms STARTTLS should be used instead.
+  ignoreTLS: process.env.SMTP_IGNORE_TLS !== "false",
 };
 
 if (process.env.SMTP_USER) {
@@ -15,12 +22,42 @@ if (process.env.SMTP_USER) {
 
 const transporter = nodemailer.createTransport(transportConfig);
 
+const SENDER_EMAIL = process.env.SMTP_FROM || "aku-creative@aku.edu";
+const SENDER = `"AKU Creative Services" <${SENDER_EMAIL}>`;
+
 async function verifyEmailConnection() {
   try {
     await transporter.verify();
-    console.log("Email service connected successfully.");
+    console.log(`Email service connected successfully (${transportConfig.host}:${transportConfig.port}).`);
   } catch (error) {
-    console.warn("Email service not connected. Check SMTP settings in .env:", error.message);
+    console.warn(`Email service connection failed [${classifySmtpError(error)}] (${transportConfig.host}:${transportConfig.port}):`, error.message);
+  }
+}
+
+// Distinguishes connection problems, rejections and bad config in the logs —
+// nodemailer/SMTP surface these as distinct error shapes.
+function classifySmtpError(error) {
+  if (["ECONNECTION", "ECONNREFUSED", "ETIMEDOUT", "ESOCKET", "EDNS"].includes(error.code)) {
+    return "SMTP_CONNECTION_ERROR";
+  }
+  if (error.code === "EAUTH") return "SMTP_AUTH_ERROR";
+  if (error.responseCode >= 500 || error.code === "EENVELOPE" || error.code === "EMESSAGE") {
+    return "SMTP_REJECTED";
+  }
+  if (!transportConfig.host) return "SMTP_INVALID_CONFIG";
+  return "SMTP_SEND_ERROR";
+}
+
+// Every outgoing email goes through this so success/failure is logged the same
+// way everywhere, without changing any of the individual send*Email() call sites.
+async function sendMail(mailOptions) {
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${mailOptions.to} (subject: "${mailOptions.subject}", messageId: ${info.messageId}).`);
+    return info;
+  } catch (error) {
+    console.error(`Email send failed [${classifySmtpError(error)}] to ${mailOptions.to} (subject: "${mailOptions.subject}"):`, error.message);
+    throw error;
   }
 }
 
@@ -75,13 +112,12 @@ ${new Date(submittedAt).toLocaleString("en-GB", { timeZone: "Africa/Nairobi" })}
     text: emailBody,
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendRequesterConfirmationEmail({ requesterEmail, selectedService }) {
-  const fromAddress = process.env.EMAIL_FROM || "aku-creative@aku.edu";
   const mailOptions = {
-    from: `"AKU Creative Services" <${fromAddress}>`,
+    from: SENDER,
     to: requesterEmail,
     subject: "We received your project request \u2014 AKU Creative Services",
     text: `
@@ -100,7 +136,7 @@ AKU Graduate School of Media and Communications
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendStatusUpdateEmail({ requesterEmail, requestId, newStatus }) {
@@ -114,7 +150,7 @@ async function sendStatusUpdateEmail({ requesterEmail, requestId, newStatus }) {
   };
 
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: SENDER,
     to: requesterEmail,
     subject: `Your request has been updated — AKU Creative Services`,
     text: `
@@ -131,7 +167,7 @@ AKU Graduate School of Media and Communications
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendCompletedWorkEmail({ requesterEmail, requestId, finalFilenames = [], note }) {
@@ -140,7 +176,7 @@ async function sendCompletedWorkEmail({ requesterEmail, requestId, finalFilename
     : "";
 
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: SENDER,
     to: requesterEmail,
     subject: `Your project is complete — AKU Creative Services`,
     text: `
@@ -159,7 +195,7 @@ AKU Graduate School of Media and Communications
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendDraftReadyEmail({ requesterEmail, requestId, draftFilenames = [], note }) {
@@ -168,7 +204,7 @@ async function sendDraftReadyEmail({ requesterEmail, requestId, draftFilenames =
     : "";
 
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: SENDER,
     to: requesterEmail,
     subject: `Your draft is ready for review — AKU Creative Services`,
     text: `
@@ -187,12 +223,12 @@ AKU Graduate School of Media and Communications
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendDraftApprovedEmail({ staffEmail, requestId }) {
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: SENDER,
     to: staffEmail,
     subject: `Draft approved — you can now submit final work (Request #${requestId})`,
     text: `
@@ -207,12 +243,12 @@ AKU Creative Services
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 async function sendChangesRequestedEmail({ staffEmail, requestId, feedbackNote }) {
   const mailOptions = {
-    from: `"AKU Creative Services" <${process.env.EMAIL_FROM}>`,
+    from: SENDER,
     to: staffEmail,
     subject: `Client requested changes — Request #${requestId}`,
     text: `
@@ -230,7 +266,7 @@ AKU Creative Services
     `.trim(),
   };
 
-  await transporter.sendMail(mailOptions);
+  await sendMail(mailOptions);
 }
 
 module.exports = {

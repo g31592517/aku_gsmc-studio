@@ -1,14 +1,4 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- AKU GSMC Creative Services — Microsoft SQL Server Schema
---
--- Run via sqlcmd:
--- sqlcmd -S localhost,1433 -E -C -i src/db/schema.sql
---
--- Or paste directly into SQL Server Management Studio (SSMS).
--- Idempotent throughout — safe to re-run against an existing database.
--- ─────────────────────────────────────────────────────────────────────────────
 
--- Create the database if it does not exist
 IF NOT EXISTS (
   SELECT name FROM sys.databases WHERE name = N'aku_creative'
 )
@@ -22,7 +12,7 @@ USE aku_creative;
 GO
 
 
--- ─── LOOKUP: USER ROLES ───────────────────────────────────────────────────────
+--  LOOKUP: USER ROLES 
 IF OBJECT_ID('user_roles', 'U') IS NULL
 BEGIN
   CREATE TABLE user_roles (
@@ -50,7 +40,7 @@ IF NOT EXISTS (SELECT 1 FROM user_roles WHERE name = 'admin')
 GO
 
 
--- ─── USERS ────────────────────────────────────────────────────────────────────
+-- ─── USERS 
 IF OBJECT_ID('users', 'U') IS NULL
 BEGIN
   CREATE TABLE users (
@@ -69,15 +59,8 @@ BEGIN
 END
 GO
 
--- Seed staff accounts (password for both: 12345678)
--- Hash precomputed via: node -e "console.log(require('bcryptjs').hashSync('12345678', 10))"
-IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'staff1@gsmc.studio')
-  INSERT INTO users (email, contact_number, role_id, password_hash)
-  VALUES ('staff1@gsmc.studio', '+000000000000', 2, '$2b$10$/WKMCj987eXtLZMl3/iO1el/uoInHerdxxkwtlV2gC0xXLNrWr6iK');
-
-IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'staff2@gsmc.studio')
-  INSERT INTO users (email, contact_number, role_id, password_hash)
-  VALUES ('staff2@gsmc.studio', '+000000000000', 2, '$2b$10$/WKMCj987eXtLZMl3/iO1el/uoInHerdxxkwtlV2gC0xXLNrWr6iK');
+-- Demo user accounts are seeded separately via resetDemoUsers.sql (repeatable,
+-- destructive reset — intentionally not part of this additive migration script).
 GO
 
 
