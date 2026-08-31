@@ -1,15 +1,11 @@
 const nodemailer = require("nodemailer");
 
-// Institutional SMTP relay (mail.ea.aku.edu) currently requires no authentication.
-// SMTP_USER/SMTP_PASSWORD are read only if ICT later confirms auth is required —
-// until then this block stays inert and the transporter connects anonymously.
 const transportConfig = {
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === "true",
-  // Institutional relay is assumed to be plain/unencrypted SMTP on the internal
-  // network for now (its STARTTLS cert isn't trusted by Node). Set
-  // SMTP_IGNORE_TLS=false once ICT confirms STARTTLS should be used instead.
+  // nime assume ikuwe  plain/unencrypted SMTP on the internal
+  // network for now.
   ignoreTLS: process.env.SMTP_IGNORE_TLS !== "false",
 };
 
@@ -22,9 +18,6 @@ if (process.env.SMTP_USER) {
 
 const transporter = nodemailer.createTransport(transportConfig);
 
-const SENDER_EMAIL = process.env.SMTP_FROM || "aku-creative@aku.edu";
-const SENDER = `"AKU Creative Services" <${SENDER_EMAIL}>`;
-
 async function verifyEmailConnection() {
   try {
     await transporter.verify();
@@ -34,8 +27,7 @@ async function verifyEmailConnection() {
   }
 }
 
-// Distinguishes connection problems, rejections and bad config in the logs —
-// nodemailer/SMTP surface these as distinct error shapes.
+// Inanisaidia ku distinguish connection problems, rejections and bad config in the logs 
 function classifySmtpError(error) {
   if (["ECONNECTION", "ECONNREFUSED", "ETIMEDOUT", "ESOCKET", "EDNS"].includes(error.code)) {
     return "SMTP_CONNECTION_ERROR";
@@ -48,8 +40,7 @@ function classifySmtpError(error) {
   return "SMTP_SEND_ERROR";
 }
 
-// Every outgoing email goes through this so success/failure is logged the same
-// way everywhere, without changing any of the individual send*Email() call sites.
+
 async function sendMail(mailOptions) {
   try {
     const info = await transporter.sendMail(mailOptions);
@@ -81,26 +72,26 @@ New Service Request \u2014 AKU Creative Services
 
 
 Requester Details
------------------
+
 Email:          ${requesterEmail}
 Contact Number: ${contactNumber}
 
 Project Details
----------------
+
 Service:        ${selectedService}
 Budget Range:   ${budgetRange || "Not specified"}
 Deadline:       ${projectDeadline || "Not specified"}
 
 Project Description
--------------------
+
 ${projectDescription}
 
 Attached Files
---------------
+
 ${attachmentList}
 
 Submitted At
-------------
+
 ${new Date(submittedAt).toLocaleString("en-GB", { timeZone: "Africa/Nairobi" })}
   `.trim();
 

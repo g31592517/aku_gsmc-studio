@@ -17,19 +17,30 @@ export default function InspirationFeed() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeVideo, setActiveVideo] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     async function fetchItems() {
+      setIsLoading(true);
+      setLoadError(false);
       try {
         const response = await apiFetch("/api/inspiration-assets?placement=inspiration");
         const data = await response.json();
-        if (data.success) setItems(data.data.map(mapInspirationAsset));
+        if (data.success) {
+          setItems(data.data.map(mapInspirationAsset));
+        } else {
+          setLoadError(true);
+        }
       } catch {
-        // Section stays empty on failure — not critical to page function
+        setLoadError(true);
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchItems();
-  }, []);
+  }, [reloadToken]);
 
   const handleOpenLightbox = useCallback((item) => setSelectedImage(item), []);
   const handleCloseLightbox = useCallback(() => setSelectedImage(null), []);
@@ -143,9 +154,23 @@ export default function InspirationFeed() {
         ) : (
           <div className="text-center py-20 text-text-muted">
             <p className="text-lg">
-              {items.length === 0 ? "Loading inspiration…" : `No results for "${searchQuery}"`}
+              {loadError
+                ? "Couldn't load inspiration right now."
+                : isLoading
+                ? "Loading inspiration…"
+                : items.length === 0
+                ? "No inspiration items yet."
+                : `No results for "${searchQuery}"`}
             </p>
-            {items.length > 0 && (
+            {loadError && (
+              <button
+                onClick={() => setReloadToken((t) => t + 1)}
+                className="mt-4 text-sm text-aku-greenLight hover:text-white transition-colors"
+              >
+                Try again
+              </button>
+            )}
+            {!loadError && !isLoading && items.length > 0 && (
               <button
                 onClick={() => { setSearchQuery(""); setActiveCategory("All"); }}
                 className="mt-4 text-sm text-aku-greenLight hover:text-white transition-colors"
